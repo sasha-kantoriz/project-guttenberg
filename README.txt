@@ -10,3 +10,5 @@ First, you will need to install all the libraries, that project depends on:
 Script usage notes:
 It will store last processed book index in the file called "index",
 you may manually insert number till which script will download books.
+
+To start books scraping script, please run: "python3 guttenberg2.py"
