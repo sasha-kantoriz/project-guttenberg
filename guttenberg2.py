@@ -7,7 +7,6 @@ import re
 import openpyxl
 from time import sleep
 from random import randint
-from requests.adapters import HTTPAdapter
 
 
 class PDF(fpdf.FPDF):
@@ -71,13 +70,12 @@ def get_books(datestamp, start, end):
         pass
     ws = wb.create_sheet(datestamp)
     ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Pages num", "PDF file name"])
-    s = requests.Session()
     try:
         for i in range(start, end + 1):
             sleep(randint(1, 3))
             book_url = f'https://www.gutenberg.org/ebooks/{i}'
             book_txt_url = f'{book_url}.txt.utf-8'
-            book_txt = s.mount(book_txt_url, HTTPAdapter(max_retries=10), timeout=60).content.decode('utf-8')
+            book_txt = requests.get(book_txt_url, timeout=60, headers={'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'}).content.decode('utf-8')
             #
             book_author = re.search(r"Author: (.*)\n", book_txt)
             book_author = book_author.groups()[0] if book_author else ""
