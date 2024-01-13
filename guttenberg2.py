@@ -22,7 +22,7 @@ class PDF(fpdf.FPDF):
 
 def get_latest_published_book_index():
     url = 'https://www.gutenberg.org/ebooks/search/?sort_order=release_date'
-    response = requests.get(url)
+    response = requests.get(url, timeout=60)
     html = BeautifulSoup(response.content, features="html.parser")
     latest_book = html.body.find('li', attrs={'class': 'booklink'})
     index = latest_book.a.attrs['href'].split('/')[-1]
