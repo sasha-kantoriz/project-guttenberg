@@ -5,6 +5,9 @@ import fpdf
 from bs4 import BeautifulSoup
 import re
 import openpyxl
+from time import sleep
+from random import randint
+from requests.adapters import HTTPAdapter
 
 
 class PDF(fpdf.FPDF):
@@ -44,7 +47,11 @@ def generate_book_pdf(folder, _id, title, author, content):
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=24)
     lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"{title}\n{author}", dry_run=True, output="LINES"))
-    pdf.multi_cell(w=0, align='C', padding=((228.6 - 24 * lines_num) / 2, 8), text=f"{title}\n{author}")
+    if lines_num >= 3:
+        padding_top = (228.6 - 24 * (lines_num - 1)) / 2
+    else:
+        padding_top = (228.6 - 24 * (lines_num)) / 2
+    pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n{author}")
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=12)
     pdf.multi_cell(w=0, align='J', padding=8, text=content)
@@ -53,40 +60,54 @@ def generate_book_pdf(folder, _id, title, author, content):
     return pdf_fname, pages
 
 def get_books(datestamp, start, end):
+    update_index_flag = True
     try:
         wb = openpyxl.load_workbook('Project Guttenberg.xlsx')
     except:
         wb = openpyxl.Workbook()
     try:
-        wb.delete_sheet('Sheet')
+        del wb['Sheet']
     except:
         pass
     ws = wb.create_sheet(datestamp)
     ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Pages num", "PDF file name"])
-    for i in range(start, end + 1):
-        book_url = f'https://www.gutenberg.org/ebooks/{i}'
-        book_txt_url = f'{book_url}.txt.utf-8'
-        book_txt = requests.get(book_txt_url).content.decode('utf-8')
-        #
-        book_author = re.search(r"Author: (.*)\n", book_txt)
-        book_author = book_author.groups()[0] if book_author else ""
-        book_language = re.search(r"Language: (.*)\n", book_txt)
-        book_language = book_language.groups()[0] if book_language else ""
-        book_translator = re.search(r"Translator: (.*)\n", book_txt)
-        book_translator = book_translator.groups()[0] if book_translator else ""
-        book_illustrator = re.search(r"Illustrator: (.*)\n", book_txt)
-        book_illustrator = book_illustrator.groups()[0] if book_illustrator else ""
-        book_title = re.search(r"Title: (.*)\n", book_txt)
-        book_title = book_title.groups()[0] if book_title else ""
-        book_content_start_index = re.search(r"\*\*\* START OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
-        book_content_start_index = book_content_start_index.end() if book_content_start_index else 0
-        book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
-        book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
-        book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', '').replace('____', '\r\n\r\n').replace('\n\n', '_____').replace('\n', '').replace('____', '\n\n').replace('_', '')
-        book_fname, pages_num = generate_book_pdf(datestamp, i, book_title, book_author, book_txt)
-        #
-        ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, pages_num, book_fname])
-    wb.save('Project Guttenberg.xlsx')
+    s = requests.Session()
+    try:
+        for i in range(start, end + 1):
+            sleep(randint(1, 3))
+            book_url = f'https://www.gutenberg.org/ebooks/{i}'
+            book_txt_url = f'{book_url}.txt.utf-8'
+            book_txt = s.mount(book_txt_url, HTTPAdapter(max_retries=10), timeout=60).content.decode('utf-8')
+            #
+            book_author = re.search(r"Author: (.*)\n", book_txt)
+            book_author = book_author.groups()[0] if book_author else ""
+            book_language = re.search(r"Language: (.*)\n", book_txt)
+            book_language = book_language.groups()[0] if book_language else ""
+            book_translator = re.search(r"Translator: (.*)\n", book_txt)
+            book_translator = book_translator.groups()[0] if book_translator else ""
+            book_illustrator = re.search(r"Illustrator: (.*)\n", book_txt)
+            book_illustrator = book_illustrator.groups()[0] if book_illustrator else ""
+            book_title = re.search(r"Title: (.*)\n", book_txt)
+            book_title = book_title.groups()[0] if book_title else ""
+            book_content_start_index = re.search(r"\*\*\* START OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
+            book_content_start_index = book_content_start_index.end() if book_content_start_index else 0
+            book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
+            book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
+            book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', '').replace('____', '\r\n\r\n').replace('\n\n', '_____').replace('\n', '').replace('____', '\n\n').replace('_', '')
+            book_fname, pages_num = generate_book_pdf(datestamp, i, book_title, book_author, book_txt)
+            #
+            ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, pages_num, book_fname])
+    except KeyboardInterrupt:
+        update_index_flag = False
+    except Exception as e:
+        print(e)
+        update_index_flag = False
+        update_last_index(i)
+    finally:
+        wb.save('Project Guttenberg.xlsx')
+        # update last published book index
+        if update_index_flag:
+            update_last_index(end_index)
 
 if __name__ == '__main__':
     # create PDFs output folder
@@ -96,5 +117,3 @@ if __name__ == '__main__':
     start_index, end_index = get_previous_last_index(), get_latest_published_book_index()
     #
     get_books(datestamp, start_index, end_index)
-    # update last published book index
-    update_last_index(end_index)
