@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import re
 import openpyxl
 from time import sleep
+import sys
 from random import randint
 
 
@@ -111,7 +112,9 @@ if __name__ == '__main__':
     # create PDFs output folder
     datestamp = datetime.now().strftime('%Y-%B-%d')
     pathlib.Path(datestamp).mkdir(parents=True, exist_ok=True)
-    # get last published book index
-    start_index, end_index = get_previous_last_index(), get_latest_published_book_index()
+    if len(sys.argv) == 1:
+        start_index, end_index = get_previous_last_index(), get_latest_published_book_index()
+    else:
+        start_index, end_index = int(sys.argv[1]), int(sys.argv[2])
     #
     get_books(datestamp, start_index, end_index)

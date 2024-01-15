@@ -12,3 +12,7 @@ It will store last processed book index in the file called "index",
 you may manually insert number till which script will download books.
 
 To start books scraping script, please run: "python3 guttenberg2.py"
+
+You can also specify start index and end index with: "python3 guttenberg2.py <START_NUM> <END_NUM>"
+If not specified, last published index will be fetched from website and will be used as end index, 
+and last processing stored index will be used as start index.
