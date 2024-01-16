@@ -46,7 +46,7 @@ def generate_book_pdf(folder, _id, title, author, content):
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=24)
-    lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"{title}\n{author}", dry_run=True, output="LINES"))
+    lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"{title}\n\n{author}", dry_run=True, output="LINES"))
     if lines_num >= 3:
         padding_top = (228.6 - 24 * (lines_num - 1)) / 2
     else:
