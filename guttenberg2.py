@@ -60,7 +60,7 @@ def generate_book_pdf(folder, _id, title, author, content):
         pdf.output(f"{folder}/{pdf_fname}")
     return pdf_fname, pages, pages >= 24 and pages <= 828
 
-def get_books(datestamp, start, end):
+def get_books(run_folder, start, end):
     update_index_flag = True
     try:
         wb = openpyxl.load_workbook('Project Guttenberg.xlsx')
@@ -70,6 +70,7 @@ def get_books(datestamp, start, end):
         del wb['Sheet']
     except:
         pass
+    datestamp = datetime.now().strftime('%Y-%B-%d %H:%M')
     ws = wb.create_sheet(datestamp)
     ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Pages num", "PDF file name"])
     try:
@@ -94,7 +95,7 @@ def get_books(datestamp, start, end):
             book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', '').replace('\n\n', '_____').replace('\n', '').replace('____', '\r\n\r\n').replace('____', '\n\n').replace('_', '')
-            book_fname, pages_num, include_book_flag = generate_book_pdf(datestamp, i, book_title, book_author, book_txt)
+            book_fname, pages_num, include_book_flag = generate_book_pdf(run_folder, i, book_title, book_author, book_txt)
             #
             if include_book_flag:
                 ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, pages_num, book_fname])
