@@ -71,7 +71,7 @@ def get_books(run_folder, start, end):
         del wb['Sheet']
     except:
         pass
-    datestamp = datetime.now().strftime('%Y-%B-%d %H:%M')
+    datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     ws = wb.create_sheet(datestamp)
     ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Pages num", "PDF file name"])
     try:
@@ -110,7 +110,7 @@ def get_books(run_folder, start, end):
         wb.save('Project Guttenberg.xlsx')
         # update last published book index
         if update_index_flag:
-            update_last_index(end_index)
+            update_last_index(end)
 
 if __name__ == '__main__':
     # parse command line arguments
