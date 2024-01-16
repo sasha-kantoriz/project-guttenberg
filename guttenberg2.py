@@ -92,7 +92,7 @@ def get_books(datestamp, start, end):
             book_content_start_index = book_content_start_index.end() if book_content_start_index else 0
             book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
-            book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', '').replace('____', '\r\n\r\n').replace('\n\n', '_____').replace('\n', '').replace('____', '\n\n').replace('_', '')
+            book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', '').replace('\n\n', '_____').replace('\n', '').replace('____', '\r\n\r\n').replace('____', '\n\n').replace('_', '')
             book_fname, pages_num = generate_book_pdf(datestamp, i, book_title, book_author, book_txt)
             #
             ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, pages_num, book_fname])
