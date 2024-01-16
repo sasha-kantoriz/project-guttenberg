@@ -8,6 +8,7 @@ import openpyxl
 from time import sleep
 import sys
 from random import randint
+import argparse
 
 
 class PDF(fpdf.FPDF):
@@ -112,12 +113,18 @@ def get_books(run_folder, start, end):
             update_last_index(end_index)
 
 if __name__ == '__main__':
+    # parse command line arguments
+    parser = argparse.ArgumentParser(
+        prog='guttenberg2.py', 
+        usage='python3 %(prog)s [options]',
+        description='Project Guttenberg books scrape script:',
+        epilog="Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet"
+    )
+    parser.add_argument('-s', '--start', type=int, dest='start', default=get_previous_last_index(), help='start index of the program')
+    parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(), help='end index of the program')
+    args = parser.parse_args()
     # create PDFs output folder
-    datestamp = datetime.now().strftime('%Y-%B-%d')
-    pathlib.Path(datestamp).mkdir(parents=True, exist_ok=True)
-    if len(sys.argv) == 1:
-        start_index, end_index = get_previous_last_index(), get_latest_published_book_index()
-    else:
-        start_index, end_index = int(sys.argv[1]), int(sys.argv[2])
+    run_folder = datetime.now().strftime('%Y-%B-%d')
+    pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
     #
-    get_books(datestamp, start_index, end_index)
+    get_books(run_folder, args.start, args.end)

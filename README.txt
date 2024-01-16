@@ -7,6 +7,19 @@ First, you will need to install all the libraries, that project depends on:
     "pip3 install -r requirements.txt"
 
 
+python guttenberg2.py -h
+usage: python3 guttenberg2.py [options]
+
+Project Guttenberg books scrape script:
+
+options:
+  -h, --help            show this help message and exit
+  -s START, --start START
+                        start index of the program
+  -e END, --end END     end index of the program
+
+Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet
+
 Script usage notes:
 It will store last processed book index in the file called "index",
 you may manually insert number till which script will download books.
