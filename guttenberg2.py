@@ -52,7 +52,7 @@ def generate_book_pdf(folder, _id, title, author, content):
         padding_top = (228.6 - 24 * (lines_num - 1)) / 2
     else:
         padding_top = (228.6 - 24 * (lines_num)) / 2
-    pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n{author}")
+    pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=12)
     pdf.multi_cell(w=0, align='J', padding=8, text=content)
