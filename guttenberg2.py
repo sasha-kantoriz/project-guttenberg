@@ -9,7 +9,10 @@ from time import sleep
 import sys
 from random import randint
 import argparse
+from openai import OpenAI
 
+
+client = OpenAI()
 
 class PDF(fpdf.FPDF):
     def footer(self):
@@ -40,7 +43,7 @@ def get_previous_last_index():
     except:
         return 1
 
-def generate_book_pdf(folder, _id, title, author, content):
+def generate_book_pdfs(folder, _id, title, author, content):
     currentYear, currentMonth = datetime.now().year, datetime.now().month
     pdf_fname = f"{currentYear}_{currentMonth}_{_id}_paperback_interior.pdf"
     pdf = PDF(format=(152.4, 228.6))
@@ -73,7 +76,7 @@ def get_books(run_folder, start, end):
         pass
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     ws = wb.create_sheet(datestamp)
-    ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Pages num", "PDF file name"])
+    ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name"])
     try:
         for i in range(start, end + 1):
             sleep(randint(1, 3))
@@ -96,10 +99,52 @@ def get_books(run_folder, start, end):
             book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', '').replace('\n\n', '_____').replace('\n', '').replace('____', '\r\n\r\n').replace('____', '\n\n').replace('_', '')
-            book_fname, pages_num, include_book_flag = generate_book_pdf(run_folder, i, book_title, book_author, book_txt)
+            #
+            description_query = f"Provide a 150 words description of the classic book {book_title}"
+            if book_author:
+                description_query += f" by Author and Writer {book_author}."
+            if book_language:
+                description_query += f" Write the review in this language: {book_language}"
+            description_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": description_query
+                    },
+                ]
+            )
+            description = description_completion.choices[0].message.content
+            #
+            keywords_query = 'Give me 7 keywords separated by semicolons for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}]'
+            keywords_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": keywords_query
+                    },
+                ]
+            )
+            keywords = keywords_completion.choices[0].message.content
+            #
+            bisac_codes_query = 'Give me up to 3 BISAC codes (only the code, not its description and not numbered) for the book "{book_itle}" by Author "{book_author}", for its correct classification'
+            bisac_codes_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": bisac_codes_query
+                    },
+                ]
+            )
+            bisac_codes = bisac_codes_completion.choices[0].message.content
+            #
+            book_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, book_txt)
             #
             if include_book_flag:
-                ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, pages_num, book_fname])
+                breakpoint()
+                ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname])
     except KeyboardInterrupt:
         update_index_flag = False
     except Exception as e:
