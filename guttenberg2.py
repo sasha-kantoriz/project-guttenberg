@@ -43,9 +43,9 @@ def get_previous_last_index():
     except:
         return 1
 
-def generate_book_pdfs(folder, _id, title, author, content):
+def generate_book_pdfs(folder, _id, title, author, description, content):
     currentYear, currentMonth = datetime.now().year, datetime.now().month
-    pdf_fname = f"{currentYear}_{currentMonth}_{_id}_paperback_interior.pdf"
+    interior_pdf_fname, cover_pdf_fname = f"{currentYear}_{currentMonth}_{_id}_paperback_interior.pdf", f"{currentYear}_{currentMonth}_{_id}_paperback_cover.pdf"
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
     pdf.add_page()
@@ -61,8 +61,36 @@ def generate_book_pdfs(folder, _id, title, author, content):
     pdf.multi_cell(w=0, align='J', padding=8, text=content)
     pages = pdf.page_no()
     if pages >= 24 and pages <= 828:
-        pdf.output(f"{folder}/{pdf_fname}")
-    return pdf_fname, pages, pages >= 24 and pages <= 828
+        pdf.output(f"{folder}/{interior_pdf_fname}")
+        #
+        pdf = fpdf.FPDF(format=(152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95))
+        pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
+        pdf.add_page()
+        pdf.set_fill_color(r=250,g=249,b=222)
+        pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
+        cols = pdf.text_columns(ncols=2, gutter=pages*0.05720 + 1.588*2, l_margin=6.35, r_margin=6.35)
+        #
+        description_p = cols.paragraph(text_align='L')
+        pdf.set_font('dejavu-sans', size=10)
+        description_p.write(description)
+        cols.end_paragraph()
+        #
+        cols.new_column()
+        #
+        title_p = cols.paragraph(text_align='C')
+        pdf.set_font('dejavu-sans', size=24)
+        title_p.write(f"\n\n{title}")
+        cols.end_paragraph()
+        #
+        author_p = cols.paragraph(text_align='C')
+        pdf.set_font('dejavu-sans', size=12)
+        author_p.write(author)
+        cols.end_paragraph()
+        #
+        cols.render()
+        #
+        pdf.output(f"{folder}/{cover_pdf_fname}")
+    return interior_pdf_fname, cover_pdf_fname, pages, pages >= 24 and pages <= 828
 
 def get_books(run_folder, start, end):
     update_index_flag = True
@@ -76,9 +104,10 @@ def get_books(run_folder, start, end):
         pass
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     ws = wb.create_sheet(datestamp)
-    ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name"])
+    ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name"])
     try:
         for i in range(start, end + 1):
+            print(f'Processing index: {i}')
             sleep(randint(1, 3))
             book_url = f'https://www.gutenberg.org/ebooks/{i}'
             book_txt_url = f'{book_url}.txt.utf-8'
@@ -140,11 +169,10 @@ def get_books(run_folder, start, end):
             )
             bisac_codes = bisac_codes_completion.choices[0].message.content
             #
-            book_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, book_txt)
+            book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_txt)
             #
             if include_book_flag:
-                breakpoint()
-                ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname])
+                ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname, cover_fname])
     except KeyboardInterrupt:
         update_index_flag = False
     except Exception as e:
