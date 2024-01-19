@@ -63,7 +63,8 @@ def generate_book_pdfs(folder, _id, title, author, description, content):
     if pages >= 24 and pages <= 828:
         pdf.output(f"{folder}/{interior_pdf_fname}")
         #
-        pdf = fpdf.FPDF(format=(152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95))
+        cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
+        pdf = fpdf.FPDF(format=(cover_width, cover_height))
         pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
         pdf.add_page()
         pdf.set_fill_color(r=250,g=249,b=222)
@@ -71,20 +72,21 @@ def generate_book_pdfs(folder, _id, title, author, description, content):
         cols = pdf.text_columns(ncols=2, gutter=pages*0.05720 + 1.588*2, l_margin=6.35, r_margin=6.35)
         #
         description_p = cols.paragraph(text_align='L')
-        pdf.set_font('dejavu-sans', size=10)
-        description_p.write(description)
+        pdf.set_font('dejavu-sans', size=12)
+        description_lines = pdf.multi_cell(w=152.4, align='L', padding=(0, 11.175), text=description, dry_run=True, output="LINES")
+        description_p.write('\n'.join(description_lines))
         cols.end_paragraph()
         #
         cols.new_column()
         #
         title_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=24)
+        pdf.set_font('dejavu-sans', size=26)
         title_p.write(f"\n\n{title}")
         cols.end_paragraph()
         #
         author_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=12)
-        author_p.write(author)
+        pdf.set_font('dejavu-sans', size=14)
+        author_p.write(f"\n{author}")
         cols.end_paragraph()
         #
         cols.render()
@@ -145,7 +147,7 @@ def get_books(run_folder, start, end):
             )
             description = description_completion.choices[0].message.content
             #
-            keywords_query = 'Give me 7 keywords separated by semicolons for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}]'
+            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory workds) for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}]'
             keywords_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -157,7 +159,7 @@ def get_books(run_folder, start, end):
             )
             keywords = keywords_completion.choices[0].message.content
             #
-            bisac_codes_query = 'Give me up to 3 BISAC codes (only the code, not its description and not numbered) for the book "{book_itle}" by Author "{book_author}", for its correct classification'
+            bisac_codes_query = f'Give me up to 3 BISAC codes (only the code, not its description and not numbered) for the book "{book_title}" by Author "{book_author}", for its correct classification'
             bisac_codes_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
