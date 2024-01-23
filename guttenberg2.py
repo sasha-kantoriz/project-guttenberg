@@ -143,27 +143,19 @@ def get_books(run_folder, start, end):
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
+            book_txt = book_txt.replace('\r\n\r\n\r\n\r\n', '\r\n\r\n')
+            book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
+            #
             book_preface, book_contents = '', ''
             contents_search = re.search(r"(content|contents|chapters)(\.|:)?\r\n\r\n", book_txt, re.IGNORECASE)
             if contents_search and not re.search(r"(content|contents|chapters)(\.|:)?(\r\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
-                contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 6 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 6:].find('\r\n\r\n\r\n')
+                contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 5 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 5:].find('\r\n\r\n\r\n')
                 #
                 book_preface = book_txt[:contents_start_index]
-                book_contents = book_txt[contents_start_index:contents_end_index]
+                book_contents = book_txt[contents_start_index:contents_end_index].replace('\r\n\r\n', '\r\n')
                 book_txt = book_txt[contents_end_index:]
-                #
-                book_preface = book_preface.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____').replace('\n', ' ')
-                book_preface = book_preface.replace('____', '\r\n\r\n').replace('____', '\n\n')
-                book_preface = book_preface.replace('_', '').replace('  ', ' ').replace('\r\n\r\n', '\n').replace('\n\n', '\n')
-                #
-                book_contents = book_contents.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____')
-                book_contents = book_contents.replace('____', '\r\n\r\n').replace('____', '\n\n')
-                book_contents = book_contents.replace('_', '').replace('  ', ' ').replace('\r\n\r\n', '\n').replace('\n\n', '\n')
-            #
-            book_txt = book_txt.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____').replace('\n', ' ')
-            book_txt = book_txt.replace('____', '\r\n\r\n').replace('____', '\n\n')
-            book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
+            book_txt = book_txt.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('_____', '\r\n\r\n')
             #
             description_query = f"Provide a 150 words description of the classic book {book_title}"
             if book_author:
