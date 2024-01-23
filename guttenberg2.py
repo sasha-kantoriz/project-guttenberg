@@ -43,11 +43,12 @@ def get_previous_last_index():
     except:
         return 1
 
-def generate_book_pdfs(folder, _id, title, author, description, content):
+def generate_book_pdfs(folder, _id, title, author, description, preface, contents, text):
     currentYear, currentMonth = datetime.now().year, datetime.now().month
     interior_pdf_fname, cover_pdf_fname = f"{currentYear}_{currentMonth}_{_id}_paperback_interior.pdf", f"{currentYear}_{currentMonth}_{_id}_paperback_cover.pdf"
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
+    # TITLE
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=24)
     lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"{title}\n\n{author}", dry_run=True, output="LINES"))
@@ -56,9 +57,20 @@ def generate_book_pdfs(folder, _id, title, author, description, content):
     else:
         padding_top = (228.6 - 24 * (lines_num)) / 2
     pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
+    if preface or contents:
+        # PREFACE
+        pdf.add_page()
+        pdf.set_font("dejavu-sans", size=8)
+        pdf.multi_cell(w=0, align='L', padding=8, text=preface)
+        # CONTENTS
+        pdf.add_page()
+        pdf.set_font("dejavu-sans", size=10)
+        pdf.multi_cell(w=0, align='L', padding=8, text=contents)
+    # TEXT
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=12)
-    pdf.multi_cell(w=0, align='J', padding=8, text=content)
+    pdf.multi_cell(w=0, align='J', padding=8, text=text)
+    #
     pages = pdf.page_no()
     if pages >= 24 and pages <= 828:
         pdf.output(f"{folder}/{interior_pdf_fname}")
@@ -117,19 +129,41 @@ def get_books(run_folder, start, end):
             #
             book_author = re.search(r"Author: (.*)\n", book_txt)
             book_author = book_author.groups()[0] if book_author else ""
-            book_language = re.search(r"Language: (.*)\n", book_txt)
+            book_language = re.search(r"Language: (.*)\n", book_txt, re.IGNORECASE)
             book_language = book_language.groups()[0] if book_language else ""
-            book_translator = re.search(r"Translator: (.*)\n", book_txt)
+            book_translator = re.search(r"Translator: (.*)\n", book_txt, re.IGNORECASE)
             book_translator = book_translator.groups()[0] if book_translator else ""
-            book_illustrator = re.search(r"Illustrator: (.*)\n", book_txt)
+            book_illustrator = re.search(r"Illustrator: (.*)\n", book_txt, re.IGNORECASE)
             book_illustrator = book_illustrator.groups()[0] if book_illustrator else ""
             book_title = re.search(r"Title: (.*)\n", book_txt)
             book_title = book_title.groups()[0] if book_title else ""
-            book_content_start_index = re.search(r"\*\*\* START OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
+            book_content_start_index = re.search(r"\*\*\* START OF THE PROJECT GUTENBERG .* \*\*\*", book_txt, re.IGNORECASE)
             book_content_start_index = book_content_start_index.end() if book_content_start_index else 0
-            book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt)
+            book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt, re.IGNORECASE)
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
-            book_txt = book_txt[book_content_start_index:book_content_end_index].replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____').replace('\n', ' ').replace('____', '\r\n\r\n').replace('____', '\n\n').replace('_', '').replace('  ', '')
+            book_txt = book_txt[book_content_start_index:book_content_end_index]
+            #
+            book_preface, book_contents = '', ''
+            contents_search = re.search(r"(content|contents|chapters)(\.|:)?\r\n\r\n", book_txt, re.IGNORECASE)
+            if contents_search and not re.search(r"(content|contents|chapters)(\.|:)?(\r\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
+                contents_start_index = contents_search.start()
+                contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 6 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 6:].find('\r\n\r\n\r\n')
+                #
+                book_preface = book_txt[:contents_start_index]
+                book_contents = book_txt[contents_start_index:contents_end_index]
+                book_txt = book_txt[contents_end_index:]
+                #
+                book_preface = book_preface.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____').replace('\n', ' ')
+                book_preface = book_preface.replace('____', '\r\n\r\n').replace('____', '\n\n')
+                book_preface = book_preface.replace('_', '').replace('  ', ' ').replace('\r\n\r\n', '\n').replace('\n\n', '\n')
+                #
+                book_contents = book_contents.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____')
+                book_contents = book_contents.replace('____', '\r\n\r\n').replace('____', '\n\n')
+                book_contents = book_contents.replace('_', '').replace('  ', ' ').replace('\r\n\r\n', '\n').replace('\n\n', '\n')
+            #
+            book_txt = book_txt.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('\n\n', '_____').replace('\n', ' ')
+            book_txt = book_txt.replace('____', '\r\n\r\n').replace('____', '\n\n')
+            book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
             #
             description_query = f"Provide a 150 words description of the classic book {book_title}"
             if book_author:
@@ -171,7 +205,7 @@ def get_books(run_folder, start, end):
             )
             bisac_codes = bisac_codes_completion.choices[0].message.content
             #
-            book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_txt)
+            book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
             #
             if include_book_flag:
                 ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname, cover_fname])
