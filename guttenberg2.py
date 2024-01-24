@@ -1,3 +1,4 @@
+import shutil
 import requests
 from datetime import datetime
 import pathlib
@@ -74,7 +75,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     pages = pdf.page_no()
     if pages >= 24 and pages <= 828:
         pdf.output(f"{folder}/{interior_pdf_fname}")
-        #
+        # BOOK COVER
         cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
         pdf = fpdf.FPDF(format=(cover_width, cover_height))
         pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
@@ -93,13 +94,27 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         #
         title_p = cols.paragraph(text_align='C')
         pdf.set_font('dejavu-sans', size=26)
+        title_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n\n{title}", dry_run=True, output="HEIGHT")
         title_p.write(f"\n\n{title}")
         cols.end_paragraph()
         #
         author_p = cols.paragraph(text_align='C')
         pdf.set_font('dejavu-sans', size=14)
+        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=author, dry_run=True, output="HEIGHT")
         author_p.write(f"\n{author}")
         cols.end_paragraph()
+        #
+        if (title_h + author_h + 8) < (134.95 / 2):
+            try:
+                cover_img = f'cover-img-{_id}.png'
+                prompt = f"Generate an image that can be used as a part of book cover, without any text parts, for book with following description: {description}."
+                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
+                response = requests.get(img_url)
+                with open(cover_img, 'wb') as img:
+                    img.write(response.content)
+                pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 100) / 2, w=100, h=100)
+            except:
+                pass
         #
         cols.render()
         #
