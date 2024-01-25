@@ -1,4 +1,3 @@
-import shutil
 import requests
 from datetime import datetime
 import pathlib
@@ -61,16 +60,16 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     if preface or contents:
         # PREFACE
         pdf.add_page()
-        pdf.set_font("dejavu-sans", size=8)
-        pdf.multi_cell(w=0, align='L', padding=8, text=preface)
+        pdf.set_font("dejavu-sans", size=10)
+        pdf.multi_cell(w=0, align='C', padding=8, text=preface)
         # CONTENTS
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, align='L', padding=8, text=contents)
+        pdf.multi_cell(w=0, align='C', padding=8, text=contents)
     # TEXT
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=12)
-    pdf.multi_cell(w=0, align='J', padding=8, text=text)
+    pdf.multi_cell(w=0, h=4.6, align='J', padding=8, text=text)
     #
     pages = pdf.page_no()
     if pages >= 24 and pages <= 828:
@@ -93,18 +92,25 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         cols.new_column()
         #
         title_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=26)
+        pdf.set_font('dejavu-sans', size=28)
         title_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n\n{title}", dry_run=True, output="HEIGHT")
         title_p.write(f"\n\n{title}")
         cols.end_paragraph()
         #
+        separator_text = "\n* * *"
+        separator_p = cols.paragraph(text_align='C')
+        pdf.set_font('dejavu-sans', size=16)
+        separator_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=separator_text, dry_run=True, output="HEIGHT")
+        separator_p.write(separator_text)
+        cols.end_paragraph()
+        #
         author_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=14)
-        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=author, dry_run=True, output="HEIGHT")
+        pdf.set_font('dejavu-sans', size=16)
+        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n{author}", dry_run=True, output="HEIGHT")
         author_p.write(f"\n{author}")
         cols.end_paragraph()
         #
-        if (title_h + author_h + 8) < (134.95 / 2):
+        if (title_h + separator_h + author_h + 8) < (134.95 / 2):
             try:
                 cover_img = f'cover-img-{_id}.png'
                 prompt = f"Generate an image that can be used as a part of book cover, without any text parts, for book with following description: {description}."
@@ -188,7 +194,7 @@ def get_books(run_folder, start, end):
             )
             description = description_completion.choices[0].message.content
             #
-            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory workds) for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}]'
+            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory workds) for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
             keywords_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -200,7 +206,7 @@ def get_books(run_folder, start, end):
             )
             keywords = keywords_completion.choices[0].message.content
             #
-            bisac_codes_query = f'Give me up to 3 BISAC codes (only the code, not its description and not numbered) for the book "{book_title}" by Author "{book_author}", for its correct classification'
+            bisac_codes_query = f'Give me up to 3 BISAC codes separated by semicolons (only the code, not its description and not numbered) for the book "{book_title}" by Author "{book_author}" with description "{description}", for its correct classification. Output format example would be: FIC019000; FIC031010; FIC014000'
             bisac_codes_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
