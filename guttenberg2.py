@@ -112,7 +112,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         #
         if (title_h + separator_h + author_h + 8) < (134.95 / 2):
             try:
-                cover_img = f'cover-img-{_id}.png'
+                cover_img = f'{folder}/imgs/cover-img-{_id}.png'
                 prompt = f"Generate an image that can be used as a part of book cover, without any text parts, for book with following description: {description}."
                 img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
                 response = requests.get(img_url)
@@ -247,6 +247,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # create PDFs output folder
     run_folder = datetime.now().strftime('%Y-%B-%d')
-    pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{run_folder}/imgs").mkdir(parents=True, exist_ok=True)
     #
     get_books(run_folder, args.start, args.end)
