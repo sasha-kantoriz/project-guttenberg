@@ -164,7 +164,7 @@ def get_books(run_folder, start, end):
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
-            if not book_author or book_language.lower() == "hungarian":
+            if "hungarian" in book_language.lower() or not book_author:
                 continue
             #
             book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt)
