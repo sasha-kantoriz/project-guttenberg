@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime
 import pathlib
+import docx
 import fpdf
 from bs4 import BeautifulSoup
 import re
@@ -127,6 +128,24 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         pdf.output(f"{folder}/{cover_pdf_fname}")
     return interior_pdf_fname, cover_pdf_fname, pages, pages >= 24 and pages <= 828
 
+def generate_book_docx(folder, _id, title, author, description, preface, contents, text):
+    doc = docx.Document()
+    currentYear, currentMonth = datetime.now().year, datetime.now().month
+    title_paragraph = doc.add_paragraph()
+    title_paragraph.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
+    title_paragraph.add_run(f"{title}\n\n{author}")
+    doc.add_page_break()
+    if preface:
+        preface_paragraph = doc.add_paragraph()
+        preface_paragraph.add_run(preface)
+        doc.add_page_break()
+    if contents:
+        contents_paragraph = doc.add_paragraph()
+        contents_paragraph.add_run(contents)
+        doc.add_page_break()
+    doc.add_paragraph(text)
+    doc.save(f"{folder}/{currentYear}-{currentMonth}_{_id}.docx")
+
 def get_books(run_folder, start, end):
     update_index_flag = True
     try:
@@ -225,6 +244,7 @@ def get_books(run_folder, start, end):
             book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
             #
             if include_book_flag:
+                generate_book_docx(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
                 ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname, cover_fname])
     except KeyboardInterrupt:
         update_index_flag = False
