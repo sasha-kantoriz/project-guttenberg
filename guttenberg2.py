@@ -200,7 +200,7 @@ def get_books(run_folder, start, end):
             if "hungarian" in book_language.lower() or not book_author:
                 continue
             #
-            book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt)
+            book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt, re.DOTALL)
             book_txt = book_txt.replace('\r\n\r\n\r\n\r\n', '\r\n\r\n')
             book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
             #
