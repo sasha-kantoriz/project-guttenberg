@@ -153,6 +153,7 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
         contents_font.name = 'Times New Roman'
         contents_font.size = docx.shared.Pt(10)
         doc.add_page_break()
+    text = text.replace('\n', '')
     text_paragraph = doc.add_paragraph()
     text_run = text_paragraph.add_run(text)
     text_font = text_run.font
