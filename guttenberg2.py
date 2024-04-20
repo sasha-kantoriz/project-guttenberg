@@ -3,6 +3,7 @@ from datetime import datetime
 import pathlib
 import docx
 from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 import fpdf
 from bs4 import BeautifulSoup
 import re
@@ -155,6 +156,7 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
         doc.add_page_break()
     text = text.replace('\n', '')
     text_paragraph = doc.add_paragraph()
+    text_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
     text_run = text_paragraph.add_run(text)
     text_font = text_run.font
     text_font.name = 'Times New Roman'
@@ -201,7 +203,7 @@ def get_books(run_folder, start, end):
             if "hungarian" in book_language.lower() or not book_author:
                 continue
             #
-            book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt, re.DOTALL)
+            book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt, flags=re.DOTALL)
             book_txt = book_txt.replace('\r\n\r\n\r\n\r\n', '\r\n\r\n')
             book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
             #
