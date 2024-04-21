@@ -12,17 +12,26 @@ usage: python3 guttenberg2.py [options]
 
 Project Guttenberg books scrape script:
 
+usage: python3 guttenberg2.py [options]
+
+Project Guttenberg books scrape script:
+
 options:
   -h, --help            show this help message and exit
+  --indexes INDEXES     books indexes to process, comma separated
   -s START, --start START
                         start index of the program
   -e END, --end END     end index of the program
+  --word                generate Word documents
+  --cover               generate PDF covers
 
 Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet
 
 Script usage notes:
 It will store last processed book index in the file called "index",
 you may manually insert number till which script will download books.
+
+By default, script will produce PDF interior and cover along with Word documents.
 
 To start books scraping script, please run: "python3 guttenberg2.py"
 
