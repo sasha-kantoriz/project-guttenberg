@@ -261,7 +261,8 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
         update_index_flag = False
         update_last_index(i)
     finally:
-        wb.save('Project Guttenberg.xlsx')
+        if not (word_only or cover_only):
+            wb.save('Project Guttenberg.xlsx')
         # update last published book index
         if update_index_flag:
             update_last_index(end)
