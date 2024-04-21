@@ -47,8 +47,7 @@ def get_previous_last_index():
         return 1
 
 def generate_book_pdfs(folder, _id, title, author, description, preface, contents, text):
-    currentYear, currentMonth = datetime.now().year, datetime.now().month
-    interior_pdf_fname, cover_pdf_fname = f"{currentYear}_{currentMonth}_{_id}_paperback_interior.pdf", f"{currentYear}_{currentMonth}_{_id}_paperback_cover.pdf"
+    interior_pdf_fname, cover_pdf_fname = f"{_id}_paperback_interior.pdf", f"{_id}_paperback_cover.pdf"
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
     # TITLE
@@ -76,7 +75,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     #
     pages = pdf.page_no()
     if pages >= 24 and pages <= 828:
-        pdf.output(f"{folder}/{interior_pdf_fname}")
+        pdf.output(f"{folder}/pdf/{interior_pdf_fname}")
         # BOOK COVER
         cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
         pdf = fpdf.FPDF(format=(cover_width, cover_height))
@@ -115,7 +114,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         #
         if (title_h + separator_h + author_h + 8) < (134.95 / 2):
             try:
-                cover_img = f'{folder}/imgs/cover-img-{_id}.png'
+                cover_img = f'{folder}/imgs/{_id}.png'
                 prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
                 img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
                 response = requests.get(img_url)
@@ -127,7 +126,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         #
         cols.render()
         #
-        pdf.output(f"{folder}/{cover_pdf_fname}")
+        pdf.output(f"{folder}/cover/{cover_pdf_fname}")
     return interior_pdf_fname, cover_pdf_fname, pages, pages >= 24 and pages <= 828
 
 def generate_book_docx(folder, _id, title, author, description, preface, contents, text):
@@ -149,21 +148,22 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     text_paragraph = doc.add_paragraph()
     text_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
     text_paragraph.add_run(text)
-    doc.save(f"{folder}/{currentYear}-{currentMonth}_{_id}.docx")
+    doc.save(f"{folder}/word/{_id}.docx")
 
-def get_books(run_folder, start, end):
+def get_books(run_folder, start, end, cover_only=False, word_only=False):
     update_index_flag = True
-    try:
-        wb = openpyxl.load_workbook('Project Guttenberg.xlsx')
-    except:
-        wb = openpyxl.Workbook()
-    try:
-        del wb['Sheet']
-    except:
-        pass
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
-    ws = wb.create_sheet(datestamp)
-    ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name"])
+    if not (cover_only or word_only):
+        try:
+            wb = openpyxl.load_workbook('Project Guttenberg.xlsx')
+        except:
+            wb = openpyxl.Workbook()
+        try:
+            del wb['Sheet']
+        except:
+            pass
+        ws = wb.create_sheet(datestamp)
+        ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name"])
     try:
         for i in range(start, end + 1):
             print(f'Processing index: {i}')
@@ -246,11 +246,13 @@ def get_books(run_folder, start, end):
             )
             bisac_codes = bisac_codes_completion.choices[0].message.content
             #
-            book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
+            if not word_only:
+                book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
+                if include_book_flag and not (cover_only or word_only):
+                    ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname, cover_fname])
             #
-            if include_book_flag:
+            if not cover_only:
                 generate_book_docx(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
-                ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname, cover_fname])
     except KeyboardInterrupt:
         update_index_flag = False
     except Exception as e:
@@ -273,9 +275,14 @@ if __name__ == '__main__':
     )
     parser.add_argument('-s', '--start', type=int, dest='start', default=get_previous_last_index(), help='start index of the program')
     parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(), help='end index of the program')
+    parser.add_argument('--word', action='store_true', help='generate Word documents')
+    parser.add_argument('--cover', action='store_true', help='generate PDF covers')
     args = parser.parse_args()
     # create PDFs output folder
-    run_folder = datetime.now().strftime('%Y-%B-%d')
+    run_folder = datetime.now().strftime('%Y-%B')
     pathlib.Path(f"{run_folder}/imgs").mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{run_folder}/cover").mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{run_folder}/word").mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{run_folder}/pdf").mkdir(parents=True, exist_ok=True)
     #
-    get_books(run_folder, args.start, args.end)
+    get_books(run_folder, args.start, args.end, args.cover, args.word)
