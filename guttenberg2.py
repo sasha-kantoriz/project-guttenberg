@@ -148,7 +148,7 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     text_paragraph = doc.add_paragraph()
     text_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
     text_paragraph.add_run(text)
-    doc.save(f"{folder}/word/{_id}.docx")
+    doc.save(f"{folder}/word/{_id}_paperback_interior.docx")
 
 def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes=None):
     update_index_flag = True
