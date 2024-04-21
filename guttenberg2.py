@@ -150,7 +150,7 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     text_paragraph.add_run(text)
     doc.save(f"{folder}/word/{_id}.docx")
 
-def get_books(run_folder, start, end, cover_only=False, word_only=False):
+def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes=None):
     update_index_flag = True
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     if not (cover_only or word_only):
@@ -165,7 +165,8 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False):
         ws = wb.create_sheet(datestamp)
         ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name"])
     try:
-        for i in range(start, end + 1):
+        sequence = indexes if indexes else range(start, end + 1)
+        for i in sequence:
             print(f'Processing index: {i}')
             sleep(randint(1, 3))
             book_url = f'https://www.gutenberg.org/ebooks/{i}'
@@ -273,6 +274,7 @@ if __name__ == '__main__':
         description='Project Guttenberg books scrape script:',
         epilog="Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet"
     )
+    parser.add_argument('--indexes', dest='indexes', help='books indexes to process, comma separated')
     parser.add_argument('-s', '--start', type=int, dest='start', default=get_previous_last_index(), help='start index of the program')
     parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(), help='end index of the program')
     parser.add_argument('--word', action='store_true', help='generate Word documents')
@@ -285,4 +287,4 @@ if __name__ == '__main__':
     pathlib.Path(f"{run_folder}/word").mkdir(parents=True, exist_ok=True)
     pathlib.Path(f"{run_folder}/pdf").mkdir(parents=True, exist_ok=True)
     #
-    get_books(run_folder, args.start, args.end, args.cover, args.word)
+    get_books(run_folder, args.start, args.end, args.cover, args.word, args.indexes.split(',') if args.indexes else None)
