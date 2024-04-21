@@ -59,19 +59,19 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         padding_top = (228.6 - 24 * (lines_num - 1)) / 2
     else:
         padding_top = (228.6 - 24 * (lines_num)) / 2
-    pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
+    pdf.multi_cell(w=0, align='L', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
     if preface or contents:
         # PREFACE
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, align='C', padding=8, text=preface)
+        pdf.multi_cell(w=0, align='L', padding=8, text=preface)
         # CONTENTS
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
         pdf.multi_cell(w=0, align='C', padding=8, text=contents)
     # TEXT
     pdf.add_page()
-    pdf.set_font("dejavu-sans", size=12)
+    pdf.set_font("dejavu-sans", size=10)
     pdf.multi_cell(w=0, h=4.6, align='J', padding=8, text=text)
     #
     pages = pdf.page_no()
@@ -116,12 +116,12 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         if (title_h + separator_h + author_h + 8) < (134.95 / 2):
             try:
                 cover_img = f'{folder}/imgs/cover-img-{_id}.png'
-                prompt = f"Generate an image that can be used as a part of book cover, without any text parts, for book with following description: {description}."
+                prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
                 img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
                 response = requests.get(img_url)
                 with open(cover_img, 'wb') as img:
                     img.write(response.content)
-                pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 100) / 2, w=100, h=100)
+                pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
             except:
                 pass
         #
@@ -135,32 +135,20 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     currentYear, currentMonth = datetime.now().year, datetime.now().month
     title_paragraph = doc.add_paragraph()
     title_paragraph.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
-    title_run = title_paragraph.add_run(f"{title}\n\n{author}")
-    title_font = title_run.font
-    title_font.name = 'Times New Roman'
-    title_font.size = docx.shared.Pt(24)
+    title_paragraph.add_run(f"{title}\n\n{author}")
     doc.add_page_break()
     if preface:
         preface_paragraph = doc.add_paragraph()
-        preface_run = preface_paragraph.add_run(preface)
-        preface_font = preface_run.font
-        preface_font.name = 'Times New Roman'
-        preface_font.size = docx.shared.Pt(10)
+        preface_paragraph.add_run(preface)
         doc.add_page_break()
     if contents:
         contents_paragraph = doc.add_paragraph()
-        contents_run = contents_paragraph.add_run(contents)
-        contents_font = contents_run.font
-        contents_font.name = 'Times New Roman'
-        contents_font.size = docx.shared.Pt(10)
+        contents_paragraph.add_run(contents)
         doc.add_page_break()
     text = text.replace('\n', '')
     text_paragraph = doc.add_paragraph()
     text_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
-    text_run = text_paragraph.add_run(text)
-    text_font = text_run.font
-    text_font.name = 'Times New Roman'
-    text_font.size = docx.shared.Pt(12)
+    text_paragraph.add_run(text)
     doc.save(f"{folder}/{currentYear}-{currentMonth}_{_id}.docx")
 
 def get_books(run_folder, start, end):
@@ -200,7 +188,7 @@ def get_books(run_folder, start, end):
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
-            if "hungarian" in book_language.lower() or not book_author:
+            if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or not book_author:
                 continue
             #
             book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt, flags=re.DOTALL)
