@@ -134,20 +134,32 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     currentYear, currentMonth = datetime.now().year, datetime.now().month
     title_paragraph = doc.add_paragraph()
     title_paragraph.alignment = docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER
-    title_paragraph.add_run(f"{title}\n\n{author}")
+    title_run = title_paragraph.add_run(f"{title}\n\n{author}")
+    title_font = title_run.font
+    title_font.name = 'Verdana'
+    title_font.size = docx.shared.Pt(24)
     doc.add_page_break()
     if preface:
         preface_paragraph = doc.add_paragraph()
-        preface_paragraph.add_run(preface)
+        preface_run = preface_paragraph.add_run(preface)
+        preface_font = preface_run.font
+        preface_font.name = 'Verdana'
+        preface_font.size = docx.shared.Pt(10)
         doc.add_page_break()
     if contents:
         contents_paragraph = doc.add_paragraph()
-        contents_paragraph.add_run(contents)
+        contents_run = contents_paragraph.add_run(contents)
+        contents_font = contents_run.font
+        contents_font.name = 'Verdana'
+        contents_font.size = docx.shared.Pt(10)
         doc.add_page_break()
     text = text.replace('\n', '')
     text_paragraph = doc.add_paragraph()
     text_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
-    text_paragraph.add_run(text)
+    text_run = text_paragraph.add_run(text)
+    text_font = text_run.font
+    text_font.name = 'Verdana'
+    text_font.size = docx.shared.Pt(10)
     doc.save(f"{folder}/word/{_id}_paperback_interior.docx")
 
 def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes=None):
