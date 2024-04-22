@@ -204,7 +204,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or not book_author:
                 continue
             #
-            book_txt = re.sub(r'\[Illustration(:)?.*\]', '', book_txt, flags=re.DOTALL)
+            book_txt = re.sub(r'\[Illustration[^\]]*\]', '', book_txt)
             book_txt = book_txt.replace('\r\n\r\n\r\n\r\n', '\r\n\r\n')
             book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
             #
