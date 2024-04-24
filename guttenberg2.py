@@ -46,7 +46,7 @@ def get_previous_last_index():
     except:
         return 1
 
-def generate_book_pdfs(folder, _id, title, author, description, preface, contents, text):
+def generate_book_pdfs(folder, _id, title, author, description, preface, contents, text, front_cover=False):
     interior_pdf_fname, cover_pdf_fname = f"{_id}_paperback_interior.pdf", f"{_id}_paperback_cover.pdf"
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
@@ -58,7 +58,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         padding_top = (228.6 - 24 * (lines_num - 1)) / 2
     else:
         padding_top = (228.6 - 24 * (lines_num)) / 2
-    pdf.multi_cell(w=0, align='L', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
+    pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
     if preface or contents:
         # PREFACE
         pdf.add_page()
@@ -77,54 +77,79 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     if pages >= 24 and pages <= 828:
         pdf.output(f"{folder}/pdf/{interior_pdf_fname}")
         # BOOK COVER
-        cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
-        pdf = fpdf.FPDF(format=(cover_width, cover_height))
-        pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
-        pdf.add_page()
-        pdf.set_fill_color(r=250,g=249,b=222)
-        pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
-        cols = pdf.text_columns(ncols=2, gutter=pages*0.05720 + 1.588*2, l_margin=6.35, r_margin=6.35)
-        #
-        description_p = cols.paragraph(text_align='L')
-        pdf.set_font('dejavu-sans', size=12)
-        description_lines = pdf.multi_cell(w=152.4, align='L', padding=(0, 11.175), text=description, dry_run=True, output="LINES")
-        description_p.write('\n'.join(description_lines))
-        cols.end_paragraph()
-        #
-        cols.new_column()
-        #
-        title_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=28)
-        title_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n\n{title}", dry_run=True, output="HEIGHT")
-        title_p.write(f"\n\n{title}")
-        cols.end_paragraph()
-        #
-        separator_text = "\n* * *"
-        separator_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=16)
-        separator_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=separator_text, dry_run=True, output="HEIGHT")
-        separator_p.write(separator_text)
-        cols.end_paragraph()
-        #
-        author_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=16)
-        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n{author}", dry_run=True, output="HEIGHT")
-        author_p.write(f"\n{author}")
-        cols.end_paragraph()
-        #
-        if (title_h + separator_h + author_h + 8) < (134.95 / 2):
-            try:
-                cover_img = f'{folder}/imgs/{_id}.png'
-                prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
-                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
-                response = requests.get(img_url)
-                with open(cover_img, 'wb') as img:
-                    img.write(response.content)
-                pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
-            except:
-                pass
-        #
-        cols.render()
+        if front_cover:
+            cover_width, cover_height = 152.4 + 3.175, 234.95
+            pdf = fpdf.FPDF(format=(cover_width, cover_height))
+            pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
+            pdf.add_page()
+            pdf.set_fill_color(r=250, g=249, b=222)
+            pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
+            pdf.set_font('dejavu-sans', size=18)
+            text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}", dry_run=True, output="HEIGHT")
+            pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}")
+            #
+            if (text_h + 8) < (134.95 / 2):
+                try:
+                    cover_img = f'{folder}/imgs/{_id}.png'
+                    prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
+                    img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[
+                        0].url
+                    response = requests.get(img_url)
+                    with open(cover_img, 'wb') as img:
+                        img.write(response.content)
+                    pdf.image(cover_img, x=(152.4 - 100 + 6.35) / 2,
+                              y=(234.95 - 40) / 2, w=100, h=100)
+                except:
+                    pass
+        else:
+            cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
+            pdf = fpdf.FPDF(format=(cover_width, cover_height))
+            pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
+            pdf.add_page()
+            pdf.set_fill_color(r=250,g=249,b=222)
+            pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
+            cols = pdf.text_columns(ncols=2, gutter=pages*0.05720 + 1.588*2, l_margin=6.35, r_margin=6.35)
+            #
+            description_p = cols.paragraph(text_align='L')
+            pdf.set_font('dejavu-sans', size=12)
+            description_lines = pdf.multi_cell(w=152.4, align='L', padding=(0, 11.175), text=description, dry_run=True, output="LINES")
+            description_p.write('\n'.join(description_lines))
+            cols.end_paragraph()
+            #
+            cols.new_column()
+            #
+            title_p = cols.paragraph(text_align='C')
+            pdf.set_font('dejavu-sans', size=28)
+            title_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n\n{title}", dry_run=True, output="HEIGHT")
+            title_p.write(f"\n\n{title}")
+            cols.end_paragraph()
+            #
+            separator_text = "\n* * *"
+            separator_p = cols.paragraph(text_align='C')
+            pdf.set_font('dejavu-sans', size=16)
+            separator_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=separator_text, dry_run=True, output="HEIGHT")
+            separator_p.write(separator_text)
+            cols.end_paragraph()
+            #
+            author_p = cols.paragraph(text_align='C')
+            pdf.set_font('dejavu-sans', size=16)
+            author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n{author}", dry_run=True, output="HEIGHT")
+            author_p.write(f"\n{author}")
+            cols.end_paragraph()
+            #
+            if (title_h + separator_h + author_h + 8) < (134.95 / 2):
+                try:
+                    cover_img = f'{folder}/imgs/{_id}.png'
+                    prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
+                    img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
+                    response = requests.get(img_url)
+                    with open(cover_img, 'wb') as img:
+                        img.write(response.content)
+                    pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
+                except:
+                    pass
+            #
+            cols.render()
         #
         pdf.output(f"{folder}/cover/{cover_pdf_fname}")
     return interior_pdf_fname, cover_pdf_fname, pages, pages >= 24 and pages <= 828
@@ -162,7 +187,7 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     text_font.size = docx.shared.Pt(10)
     doc.save(f"{folder}/word/{_id}_paperback_interior.docx")
 
-def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes=None):
+def get_books(run_folder, start, end, front_cover=False, cover_only=False, word_only=False, indexes=None):
     update_index_flag = True
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     if not (cover_only or word_only):
@@ -205,19 +230,21 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 continue
             #
             book_txt = re.sub(r'\[Illustration[^\]]*\]', '', book_txt)
-            book_txt = book_txt.replace('\r\n\r\n\r\n\r\n', '\r\n\r\n')
-            book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
+            book_txt = book_txt.replace('\r\n', '\n')
             #
             book_preface, book_contents = '', ''
-            contents_search = re.search(r"(content|contents|chapters)(\.|:)?\r\n\r\n", book_txt, re.IGNORECASE)
-            if contents_search and not re.search(r"(content|contents|chapters)(\.|:)?(\r\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
+            contents_search = re.search(r"(content|contents|chapters)(\.|:)?\n\n", book_txt, re.IGNORECASE)
+            if contents_search and not re.search(r"(content|contents|chapters)(\.|:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
-                contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 5 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 5:].find('\r\n\r\n\r\n')
+                contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 5 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 5:].find('\n\n\n')
                 #
                 book_preface = book_txt[:contents_start_index]
-                book_contents = book_txt[contents_start_index:contents_end_index].replace('\r\n\r\n', '\r\n')
+                book_contents = book_txt[contents_start_index:contents_end_index].replace('\n\n', '\n')
                 book_txt = book_txt[contents_end_index:]
-            book_txt = book_txt.replace('\r\n\r\n', '_____').replace('\r\n', ' ').replace('_____', '\r\n\r\n')
+            #
+            book_txt = book_txt.replace('\n\n\n\n', '\n\n')
+            book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
+            book_txt = book_txt.replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             #
             description_query = f"Provide a 150 words description of the classic book {book_title}"
             if book_author:
@@ -260,7 +287,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             bisac_codes = bisac_codes_completion.choices[0].message.content
             #
             if not word_only:
-                book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
+                book_fname, cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt, front_cover)
                 if include_book_flag and not (cover_only or word_only):
                     ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator, description, keywords, bisac_codes, pages_num, book_fname, cover_fname])
             #
@@ -292,6 +319,7 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(), help='end index of the program')
     parser.add_argument('--word', action='store_true', help='generate Word documents')
     parser.add_argument('--cover', action='store_true', help='generate PDF covers')
+    parser.add_argument('--front_cover', action='store_true', help='generate PDF front covers')
     args = parser.parse_args()
     # create PDFs output folder
     run_folder = datetime.now().strftime('%Y-%B')
@@ -300,4 +328,4 @@ if __name__ == '__main__':
     pathlib.Path(f"{run_folder}/word").mkdir(parents=True, exist_ok=True)
     pathlib.Path(f"{run_folder}/pdf").mkdir(parents=True, exist_ok=True)
     #
-    get_books(run_folder, args.start, args.end, args.cover, args.word, args.indexes.split(',') if args.indexes else None)
+    get_books(run_folder, args.start, args.end, args.front_cover, args.cover, args.word, args.indexes.split(',') if args.indexes else None)
