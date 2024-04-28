@@ -24,7 +24,6 @@ options:
   -e END, --end END     end index of the program
   --word                generate Word documents
   --cover               generate PDF covers
-  --front_cover         generate PDF front covers
 
 Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet
 
