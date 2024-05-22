@@ -196,7 +196,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
         except:
             pass
         ws = wb.create_sheet(datestamp)
-        ws.append(["Book ID", "Plain text URL", "Title", "Language", "Author", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name", "Front cover PDF file name"])
+        ws.append(["Book ID", "Plain text URL", "Title", "Published Year", "Language", "Author", "Author Year of Death", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name", "Front cover PDF file name"])
     try:
         sequence = indexes if indexes else range(start, end + 1)
         for i in sequence:
@@ -282,13 +282,37 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             )
             bisac_codes = bisac_codes_completion.choices[0].message.content
             #
+            published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
+            published_year_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": published_year_query
+                    },
+                ]
+            )
+            published_year = published_year_completion.choices[0].message.content
+            #
+            author_year_of_death_query = f'Please, tell me the year of death of {book_author}, the author of the book {book_title}. Provide only the date in the format YYYY. If the author is still alive, please, provide the "XXXX".'
+            author_year_of_death_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": author_year_of_death_query
+                    },
+                ]
+            )
+            author_year_of_death = author_year_of_death_completion.choices[0].message.content
+            #
             book_fname, cover_fname, front_cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt, cover_only, word_only)
             #
             if (not cover_only or word_only) and (pages_num >= 24 and pages_num <= 828):
                 generate_book_docx(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
             #
             if include_book_flag and not (cover_only or word_only):
-                ws.append([i, book_txt_url, book_title, book_language, book_author, book_translator, book_illustrator,
+                ws.append([i, book_txt_url, book_title, published_year, book_language, book_author, author_year_of_death, book_translator, book_illustrator,
                            description, keywords, bisac_codes, pages_num, book_fname, cover_fname, front_cover_fname])
     except KeyboardInterrupt:
         update_index_flag = False
