@@ -88,13 +88,14 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         pdf.set_font('dejavu-sans', size=18)
         text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}", dry_run=True, output="HEIGHT")
         pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}")
+        # COVER IMAGE
+        include_cover_img = (text_h + 8) < (134.95 / 2)
         #
-        if (text_h + 8) < (134.95 / 2):
+        if include_cover_img:
             try:
                 cover_img = f'{folder}/imgs/{_id}.png'
                 prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
-                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[
-                    0].url
+                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
                 response = requests.get(img_url)
                 with open(cover_img, 'wb') as img:
                     img.write(response.content)
@@ -139,14 +140,8 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         author_p.write(f"\n{author}")
         cols.end_paragraph()
         #
-        if (title_h + separator_h + author_h + 8) < (134.95 / 2):
+        if include_cover_img:
             try:
-                cover_img = f'{folder}/imgs/{_id}.png'
-                prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
-                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
-                response = requests.get(img_url)
-                with open(cover_img, 'wb') as img:
-                    img.write(response.content)
                 pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
             except:
                 pass
