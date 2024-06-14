@@ -183,6 +183,7 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     text_font.size = docx.shared.Pt(10)
     doc.save(f"{folder}/word/{_id}_paperback_interior.docx")
 
+
 def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes=None):
     update_index_flag = True
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
@@ -228,19 +229,17 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             book_txt = re.sub(r'\[Illustration[^\]]*\]', '', book_txt)
             book_txt = book_txt.replace('\r\n', '\n')
             #
-            book_preface, book_contents = '', ''
             contents_search = re.search(r"(content|contents|chapters)(\.|:)?\n\n", book_txt, re.IGNORECASE)
             if contents_search and not re.search(r"(content|contents|chapters)(\.|:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 5 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 5:].find('\n\n\n')
-                #
-                book_preface = book_txt[:contents_start_index]
-                book_contents = book_txt[contents_start_index:contents_end_index].replace('\n\n', '\n')
-                book_txt = book_txt[contents_end_index:]
+            else:
+                contents_start_index = 0
+                contents_end_index = re.search(r"\n\n\n\n", book_txt[3:], re.IGNORECASE).start()
             #
-            book_txt = book_txt.replace('\n\n\n\n', '\n\n')
-            book_txt = book_txt.replace('_', '').replace('  ', ' ').replace('--', '-')
-            book_txt = book_txt.replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            book_preface = book_txt[:3 + contents_start_index].replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            book_contents = book_txt[contents_start_index:contents_end_index].replace('\n\n', '\n').replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('_____', '\n\n')
+            book_txt = book_txt[contents_end_index:].replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             #
             description_query = f"Provide a 150 words description of the classic book {book_title}"
             if book_author:
