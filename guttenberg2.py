@@ -229,17 +229,20 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             book_txt = re.sub(r'\[Illustration[^\]]*\]', '', book_txt)
             book_txt = book_txt.replace('\r\n', '\n')
             #
-            contents_search = re.search(r"(content|contents|chapters)(\.|:)?\n\n", book_txt, re.IGNORECASE)
-            if contents_search and not re.search(r"(content|contents|chapters)(\.|:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
+            contents_search = re.search(r"(content|contents|chapters)(:)?\n\n", book_txt, re.IGNORECASE)
+            if contents_search and not re.search(r"(content|contents|chapters)(:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 5 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 5:].find('\n\n\n')
             else:
-                contents_start_index = 0
-                contents_end_index = re.search(r"\n\n\n\n", book_txt[3:], re.IGNORECASE).start()
+                contents_end_index = contents_start_index = re.search(r"\n\n\n", book_txt).start()
             #
-            book_preface = book_txt[:3 + contents_start_index].replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
-            book_contents = book_txt[contents_start_index:contents_end_index].replace('\n\n', '\n').replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('_____', '\n\n')
-            book_txt = book_txt[contents_end_index:].replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            book_preface = book_txt[:contents_start_index]
+            book_contents = book_txt[contents_start_index:contents_end_index]
+            book_txt = book_txt[contents_end_index:]
+            #
+            book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            book_contents = book_contents.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '\n')
+            book_txt = book_txt.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             #
             description_query = f"Provide a 150 words description of the classic book {book_title}"
             if book_author:
@@ -257,7 +260,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             )
             description = description_completion.choices[0].message.content
             #
-            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory workds) for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
+            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
             keywords_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
