@@ -86,10 +86,10 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         pdf.set_fill_color(r=250, g=249, b=222)
         pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
         pdf.set_font('dejavu-sans', size=18)
-        text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}", dry_run=True, output="HEIGHT")
-        pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}")
+        text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}\n", dry_run=True, output="HEIGHT")
+        pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}\n")
         # COVER IMAGE
-        include_cover_img = (text_h + 8) < (134.95 / 2)
+        include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 20)
         #
         if include_cover_img:
             try:
@@ -100,7 +100,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
                 with open(cover_img, 'wb') as img:
                     img.write(response.content)
                 pdf.image(cover_img, x=(152.4 - 100 + 6.35) / 2,
-                          y=(234.95 - 40) / 2, w=100, h=100)
+                          y=(234.95 - 40) / 2 + 20, w=100, h=100)
             except:
                 pass
         pdf.output(f"{folder}/front_cover/{front_cover_pdf_fname}")
