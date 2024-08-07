@@ -1,21 +1,156 @@
-import requests
-from datetime import datetime
-import pathlib
-import docx
-from docx.shared import Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-import fpdf
-from bs4 import BeautifulSoup
+import os
 import re
+import sys
+import argparse
+import pathlib
+import requests
+import fpdf
+import docx
 import openpyxl
 from time import sleep
-import sys
+from datetime import datetime
 from random import randint
-import argparse
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from PIL import Image
+from pdf2image import convert_from_path
+from bs4 import BeautifulSoup
 from openai import OpenAI
 
 
 client = OpenAI()
+
+
+def search_open_library(title, author_name):
+    base_url = 'http://openlibrary.org/search.json'
+    params = {'title': title, 'author': author_name}
+
+    try:
+        response = requests.get(base_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if 'docs' in data and len(data['docs']) > 0:
+                book_data = data['docs'][0]
+
+                # Extract publication year
+                pub_year = book_data.get('first_publish_year', 'N/A')
+
+                # Extract author key to get death year
+                author_key = book_data['author_key'][0] if 'author_key' in book_data and book_data['author_key'] else None
+                death_year = 'N/A'
+                if author_key:
+                    author_url = f"http://openlibrary.org/authors/{author_key}.json"
+                    author_response = requests.get(author_url)
+                    if author_response.status_code == 200:
+                        author_data = author_response.json()
+                        death_date = author_data.get('death_date', None)
+                        if death_date:
+                            try:
+                                death_year = death_date.split('-')[0]
+                                if not death_year.isdigit():
+                                    death_year = 'N/A'
+                            except:
+                                death_year = 'N/A'
+
+                return {'open_library_publication_year': pub_year, 'open_library_death_year': death_year}
+            else:
+                print(f"No book found for {title} by {author_name} on Open Library")
+                return {'open_library_publication_year': 'N/A', 'open_library_death_year': 'N/A'}
+        else:
+            print(f"Failed to fetch Open Library data for {title} by {author_name}")
+    except Exception as e:
+        print(f"Error fetching data for {title} by {author_name} from Open Library: {e}")
+
+    return {'open_library_publication_year': 'N/A', 'open_library_death_year': 'N/A'}
+
+
+def search_wikipedia_author(author_name):
+    try:
+        search_url = "https://en.wikipedia.org/w/api.php"
+        search_params = {'action': 'query', 'format': 'json', 'list': 'search', 'srsearch': author_name}
+        response = requests.get(search_url, params=search_params)
+        data = response.json()
+
+        if 'query' in data and 'search' in data['query'] and data['query']['search']:
+            page_title = data['query']['search'][0]['title']
+            content_url = f"https://en.wikipedia.org/w/api.php"
+            content_params = {"action": "parse", "format": "json", "page": page_title}
+            response = requests.get(content_url, params=content_params)
+            data = response.json()
+            page_text = data['parse']['text']['*']
+
+            death_year = 'N/A'
+            death_match = re.search(r'\b(?:died|death)\s*(?:on|in)?\s*(\d{4})', page_text, re.IGNORECASE)
+            if death_match:
+                death_year = death_match.group(1)
+                return death_year
+
+    except Exception as e:
+        print(f"Error fetching data for {author_name} from Wikipedia: {e}")
+
+    return 'N/A'
+
+
+def search_google_books(title, author_name, retries=3):
+    base_url = 'https://www.googleapis.com/books/v1/volumes'
+    params = {'q': f'intitle:{title}+inauthor:{author_name}'}
+
+    for attempt in range(retries):
+        try:
+            response = requests.get(base_url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if 'items' in data and data['totalItems'] > 0:
+                    book_data = data['items'][0]['volumeInfo']
+
+                    pub_year = book_data.get('publishedDate', 'N/A')
+                    if len(pub_year) > 4:
+                        pub_year = pub_year.split('-')[0]
+
+                    return {'google_books_publication_year': pub_year}
+                else:
+                    print(f"No book found for {title} by {author_name} on Google Books")
+                    return {'google_books_publication_year': 'N/A'}
+            else:
+                print(f"Failed to fetch Google Books data for {title} by {author_name}, attempt {attempt+1}")
+                sleep(1)
+        except Exception as e:
+            print(f"Error fetching data for {title} by {author_name} from Google Books: {e}")
+
+    print(f"Failed to fetch data for {title} by {author_name} after {retries} attempts")
+    return {'google_books_publication_year': 'N/A'}
+
+
+def search_wikidata(author_name):
+    base_url = 'https://www.wikidata.org/w/api.php'
+    params = {'action': 'wbsearchentities', 'format': 'json', 'language': 'en', 'search': author_name, 'type': 'item'}
+
+    try:
+        response = requests.get(base_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if 'search' in data and len(data['search']) > 0:
+                author_id = data['search'][0]['id']
+                author_url = f"https://www.wikidata.org/wiki/Special:EntityData/{author_id}.json"
+                author_response = requests.get(author_url)
+                if author_response.status_code == 200:
+                    author_data = author_response.json()
+                    entities = author_data.get('entities', {})
+                    author_info = entities.get(author_id, {})
+                    claims = author_info.get('claims', {})
+                    death_date = claims.get('P570', [{}])[0].get('mainsnak', {}).get('datavalue', {}).get('value', {}).get('time', None)
+                    if death_date:
+                        death_year = death_date[1:5]
+                        return death_year
+            else:
+                print(f"No data found on Wikidata for {author_name}")
+        else:
+            print(f"Failed to fetch Wikidata data for {author_name}")
+    except Exception as e:
+        print(f"Error fetching data for {author_name} from Wikidata: {e}")
+
+    return 'N/A'
+
 
 class PDF(fpdf.FPDF):
     def footer(self):
@@ -36,9 +171,11 @@ def get_latest_published_book_index():
     index = latest_book.a.attrs['href'].split('/')[-1]
     return int(index)
 
+
 def update_last_index(index):
     with open('index', 'w') as f:
         f.write(str(index))
+
 
 def get_previous_last_index():
     try:
@@ -46,8 +183,17 @@ def get_previous_last_index():
     except:
         return 1
 
+
 def generate_book_pdfs(folder, _id, title, author, description, preface, contents, text, cover_only=False, word_only=False):
-    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname = f"{_id}_paperback_interior.pdf", f"{_id}_paperback_cover.pdf", f"{_id}_paperback_front_cover.pdf"
+    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
+        f"{folder}/pdf/{_id}_paperback_interior.pdf",
+        f"{folder}/cover/{_id}_paperback_cover.pdf",
+        f"{folder}/front_cover//{_id}.pdf",
+        f"{folder}/front_cover/{_id}.webp",
+        f"{folder}/front_cover/{_id}.png",
+        f"{folder}/imgs/{_id}.png",
+        f"{folder}/imgs/{_id}.webp"
+    )
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
     # TITLE
@@ -74,10 +220,10 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     pdf.multi_cell(w=0, h=4.6, align='J', padding=8, text=text)
     #
     pages = pdf.page_no()
-    if pages >= 24 and pages <= 828 and not cover_only and not word_only:
-        pdf.output(f"{folder}/pdf/{interior_pdf_fname}")
+    if 24 <= pages <= 828 and not cover_only and not word_only:
+        pdf.output(interior_pdf_fname)
     # COVERS
-    if pages >= 24 and pages <= 828 and not word_only:
+    if 24 <= pages <= 828 and not word_only:
         # FRONT COVER
         cover_width, cover_height = 152.4 + 3.175, 234.95
         pdf = fpdf.FPDF(format=(cover_width, cover_height))
@@ -93,17 +239,24 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         #
         if include_cover_img:
             try:
-                cover_img = f'{folder}/imgs/{_id}.png'
                 prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
                 img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
                 response = requests.get(img_url)
-                with open(cover_img, 'wb') as img:
+                with open(dalle_cover_img_png, 'wb') as img:
                     img.write(response.content)
-                pdf.image(cover_img, x=(152.4 - 100 + 6.35) / 2,
+                pdf.image(dalle_cover_img_png, x=(152.4 - 100 + 6.35) / 2,
                           y=(234.95 - 40) / 2 + 20, w=100, h=100)
             except:
                 pass
-        pdf.output(f"{folder}/front_cover/{front_cover_pdf_fname}")
+        pdf.output(front_cover_pdf_fname)
+        pages = convert_from_path(front_cover_pdf_fname)
+        pages[0].save(front_cover_image_tmp_fname, "PNG")
+        cover_webp = Image.open(front_cover_image_tmp_fname)
+        cover_webp.save(front_cover_webp_fname, "WEBP")
+        cover_webp.close()
+        cover_image = Image.open(dalle_cover_img_png)
+        cover_image.save(dalle_cover_img_webp, "WEBP")
+        cover_image.close()
         # Full cover
         cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
         pdf = fpdf.FPDF(format=(cover_width, cover_height))
@@ -142,14 +295,24 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
         #
         if include_cover_img:
             try:
-                pdf.image(cover_img, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
+                pdf.image(dalle_cover_img_png, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
             except:
                 pass
         #
         cols.render()
-        #
-        pdf.output(f"{folder}/cover/{cover_pdf_fname}")
-    return interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, pages, pages >= 24 and pages <= 828
+        pdf.output(cover_pdf_fname)
+        os.remove(front_cover_pdf_fname)
+        os.remove(front_cover_image_tmp_fname)
+        os.remove(dalle_cover_img_png)
+    #
+    return (
+        interior_pdf_fname,
+        cover_pdf_fname,
+        front_cover_webp_fname,
+        pages,
+        24 <= pages <= 828
+    )
+
 
 def generate_book_docx(folder, _id, title, author, description, preface, contents, text):
     doc = docx.Document("assets/template.docx")
@@ -197,15 +360,49 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
         except:
             pass
         ws = wb.create_sheet(datestamp)
-        ws.append(["Book ID", "Plain text URL", "Title", "Published Year", "Language", "Author", "Author Year of Death", "Translator", "Illustrator", "Description", "Keywords", "BISAC codes", "Pages num", "PDF file name", "Cover PDF file name", "Front cover PDF file name"])
+        ws.append(
+            [
+                "Book ID",
+                "Plain text URL",
+                "Title",
+                "Published Year",
+                "Google Book Publication Year",
+                "OpenLibrary Book Publication Year",
+                "Language",
+                "Author",
+                "Author Year of Death",
+                "Wikidata Author Year of Death",
+                "Wikipedia Author Year of Death",
+                "OpenLibrary Author Year of Death",
+                "Translator",
+                "Illustrator",
+                "Description",
+                "Keywords",
+                "BISAC codes",
+                "Pages num",
+                "PDF file name",
+                "Cover PDF file name",
+                "Front cover WEBP file name"
+            ]
+        )
     try:
         sequence = indexes if indexes else range(start, end + 1)
         for i in sequence:
             print(f'Processing index: {i}')
-            sleep(randint(1, 3))
-            book_url = f'https://www.gutenberg.org/ebooks/{i}'
-            book_txt_url = f'{book_url}.txt.utf-8'
-            book_txt = requests.get(book_txt_url, timeout=60, headers={'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'}).content.decode('utf-8')
+            book_url = f'https://www.gutenberg.org/ebooks/{i}.txt.utf-8'
+            response = requests.get(
+                book_url,
+                timeout=60,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'
+                }
+            )
+            #
+            if response.status_code != 200:
+                print(f"Error fetching book text: {response.status_code}")
+                continue
+            #
+            book_txt = response.content.decode('utf-8')
             #
             book_author = re.search(r"Author: (.*)\n", book_txt)
             book_author = book_author.groups()[0] if book_author else ""
@@ -243,7 +440,9 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents = book_contents.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '\n')
             book_txt = book_txt.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
-            #
+            ############################################################################################################
+            # Book Metadata
+            ############################################################################################################
             description_query = f"Provide a 150 words description of the classic book {book_title}"
             if book_author:
                 description_query += f" by Author and Writer {book_author}."
@@ -307,15 +506,48 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 ]
             )
             author_year_of_death = author_year_of_death_completion.choices[0].message.content
-            #
-            book_fname, cover_fname, front_cover_fname, pages_num, include_book_flag = generate_book_pdfs(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt, cover_only, word_only)
-            #
-            if (not cover_only or word_only) and (pages_num >= 24 and pages_num <= 828):
-                generate_book_docx(run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt)
+            # Extended Metadata
+            google_books_search_data = search_google_books(book_title, book_author)
+            open_library_search_data = search_open_library(book_title, book_author)
+            wikipedia_author_year_of_death = search_wikipedia_author(book_author)
+            wikidata_author_year_of_death = search_wikidata(book_author)
+            ############################################################################################################
+            # Book files Generation
+            ############################################################################################################
+            book_fname, cover_fname, front_cover_image_fname, pages_num, include_book_flag = generate_book_pdfs(
+                run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt, cover_only, word_only
+            )
+            if (24 <= pages_num <= 828) and (not cover_only or word_only):
+                generate_book_docx(
+                    run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt
+                )
             #
             if include_book_flag and not (cover_only or word_only):
-                ws.append([i, book_txt_url, book_title, published_year, book_language, book_author, author_year_of_death, book_translator, book_illustrator,
-                           description, keywords, bisac_codes, pages_num, book_fname, cover_fname, front_cover_fname])
+                ws.append(
+                    [
+                        i,
+                        book_url,
+                        book_title,
+                        published_year,
+                        google_books_search_data.get('google_books_publication_year', 'N / A'),
+                        open_library_search_data.get('open_library_publication_year', 'N / A'),
+                        book_language,
+                        book_author,
+                        author_year_of_death,
+                        wikidata_author_year_of_death,
+                        wikipedia_author_year_of_death,
+                        open_library_search_data.get('open_library_death_year', 'N / A'),
+                        book_translator,
+                        book_illustrator,
+                        description,
+                        keywords,
+                        bisac_codes,
+                        pages_num,
+                        book_fname,
+                        cover_fname,
+                        front_cover_image_fname
+                    ]
+                )
     except KeyboardInterrupt:
         update_index_flag = False
     except Exception as e:
@@ -329,20 +561,27 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
         if update_index_flag:
             update_last_index(end)
 
-if __name__ == '__main__':
+
+def parse_args():
     # parse command line arguments
     parser = argparse.ArgumentParser(
-        prog='guttenberg2.py', 
+        prog='guttenberg2.py',
         usage='python3 %(prog)s [options]',
         description='Project Guttenberg books scrape script:',
         epilog="Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet"
     )
     parser.add_argument('--indexes', dest='indexes', help='books indexes to process, comma separated')
-    parser.add_argument('-s', '--start', type=int, dest='start', default=get_previous_last_index(), help='start index of the program')
-    parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(), help='end index of the program')
+    parser.add_argument('-s', '--start', type=int, dest='start', default=get_previous_last_index(),
+                        help='start index of the program')
+    parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(),
+                        help='end index of the program')
     parser.add_argument('--word', action='store_true', help='generate Word documents')
     parser.add_argument('--cover', action='store_true', help='generate PDF covers')
-    args = parser.parse_args()
+    #
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
     # create PDFs output folder
     run_folder = datetime.now().strftime('%Y-%B')
     pathlib.Path(f"{run_folder}/imgs").mkdir(parents=True, exist_ok=True)
@@ -351,4 +590,5 @@ if __name__ == '__main__':
     pathlib.Path(f"{run_folder}/word").mkdir(parents=True, exist_ok=True)
     pathlib.Path(f"{run_folder}/pdf").mkdir(parents=True, exist_ok=True)
     #
+    args = parse_args()
     get_books(run_folder, args.start, args.end, args.cover, args.word, args.indexes.split(',') if args.indexes else None)
