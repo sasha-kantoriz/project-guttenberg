@@ -249,8 +249,8 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
             except:
                 pass
         pdf.output(front_cover_pdf_fname)
-        pages = convert_from_path(front_cover_pdf_fname)
-        pages[0].save(front_cover_image_tmp_fname, "PNG")
+        front_cover_pages = convert_from_path(front_cover_pdf_fname)
+        front_cover_pages[0].save(front_cover_image_tmp_fname, "PNG")
         cover_webp = Image.open(front_cover_image_tmp_fname)
         cover_webp.save(front_cover_webp_fname, "WEBP")
         cover_webp.close()
