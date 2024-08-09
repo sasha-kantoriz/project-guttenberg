@@ -184,7 +184,7 @@ def get_previous_last_index():
         return 1
 
 
-def generate_book_pdfs(folder, _id, title, author, description, preface, contents, text, cover_only=False, word_only=False):
+def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, cover_only=False, word_only=False):
     interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
@@ -205,15 +205,21 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     else:
         padding_top = (228.6 - 24 * (lines_num)) / 2
     pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
-    if preface or contents:
-        # PREFACE
+    # PUBLISHER NOTES
+    if notes:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, align='L', padding=8, text=preface)
-        # CONTENTS
+        pdf.multi_cell(w=0, align='L', padding=8, text=notes)
+    # CONTENTS
+    if contents:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
         pdf.multi_cell(w=0, align='C', padding=8, text=contents)
+    # PREFACE
+    if preface:
+        pdf.add_page()
+        pdf.set_font("dejavu-sans", size=10)
+        pdf.multi_cell(w=0, align='J', padding=8, text=preface)
     # TEXT
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=10)
@@ -314,7 +320,7 @@ def generate_book_pdfs(folder, _id, title, author, description, preface, content
     )
 
 
-def generate_book_docx(folder, _id, title, author, description, preface, contents, text):
+def generate_book_docx(folder, _id, title, author, description, book_publisher_notes, preface, contents, text):
     doc = docx.Document("assets/template.docx")
     currentYear, currentMonth = datetime.now().year, datetime.now().month
     title_paragraph = doc.add_paragraph()
@@ -324,6 +330,13 @@ def generate_book_docx(folder, _id, title, author, description, preface, content
     title_font.name = 'Verdana'
     title_font.size = docx.shared.Pt(24)
     doc.add_page_break()
+    if book_publisher_notes:
+        preface_paragraph = doc.add_paragraph()
+        preface_run = preface_paragraph.add_run(book_publisher_notes)
+        preface_font = preface_run.font
+        preface_font.name = 'Verdana'
+        preface_font.size = docx.shared.Pt(10)
+        doc.add_page_break()
     if preface:
         preface_paragraph = doc.add_paragraph()
         preface_run = preface_paragraph.add_run(preface)
@@ -423,21 +436,34 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or not book_author:
                 continue
             #
-            book_txt = re.sub(r'\[Illustration[^\]]*\]', '', book_txt)
+            illustration_pattern = re.compile(r'\[Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL)
+            book_txt = re.sub(illustration_pattern, '', book_txt)
+            proofread_pattern = re.compile(r'(\s+)?Produced.*(https://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)(\r\n){4,10}', re.IGNORECASE|re.DOTALL)
+            book_txt = re.sub(proofread_pattern, '', book_txt)
+            #
             book_txt = book_txt.replace('\r\n', '\n')
             #
-            contents_search = re.search(r"(content|contents|chapters)(:)?\n\n", book_txt, re.IGNORECASE)
+            contents_search = re.search(r"(content|contents|chapters)(:)?(\n){2,}", book_txt, re.IGNORECASE)
             if contents_search and not re.search(r"(content|contents|chapters)(:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
-                contents_end_index = contents_start_index + len(contents_search.groups()[0]) + 5 + book_txt[contents_start_index + len(contents_search.groups()[0]) + 5:].find('\n\n\n')
+                contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
             else:
                 contents_end_index = contents_start_index = re.search(r"\n\n\n", book_txt).start()
             #
-            book_preface = book_txt[:contents_start_index]
+            book_publisher_notes = book_txt[:contents_start_index]
             book_contents = book_txt[contents_start_index:contents_end_index]
+            #
+            preface_search = re.search(r'preface(\.)?(\n){2,}', book_txt, re.IGNORECASE)
+            if preface_search:
+                preface_start_index = preface_search.start()
+                preface_end_index = preface_start_index + len(preface_search.group()) + 10 + book_txt[preface_start_index + len(preface_search.group()) + 10:].find('\n\n\n')
+                book_preface = book_txt[preface_start_index:preface_end_index]
+            else:
+                book_preface = ""
+            #
             book_txt = book_txt[contents_end_index:]
             #
-            book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents = book_contents.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '\n')
             book_txt = book_txt.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             ############################################################################################################
@@ -515,11 +541,11 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             # Book files Generation
             ############################################################################################################
             book_fname, cover_fname, front_cover_image_fname, pages_num, include_book_flag = generate_book_pdfs(
-                run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt, cover_only, word_only
+                run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, cover_only, word_only
             )
             if (24 <= pages_num <= 828) and (not cover_only or word_only):
                 generate_book_docx(
-                    run_folder, i, book_title, book_author, description, book_preface, book_contents, book_txt
+                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt
                 )
             #
             if include_book_flag and not (cover_only or word_only):
