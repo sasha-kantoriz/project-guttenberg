@@ -209,21 +209,21 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
     if notes:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, align='L', padding=8, text=notes)
+        pdf.multi_cell(w=0, h=4, align='L', padding=8, text=notes)
     # CONTENTS
     if contents:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, align='C', padding=8, text=contents)
+        pdf.multi_cell(w=0, h=4.4, align='C', padding=8, text=contents)
     # PREFACE
     if preface:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, align='J', padding=8, text=preface)
+        pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=preface)
     # TEXT
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=10)
-    pdf.multi_cell(w=0, h=4.6, align='J', padding=8, text=text)
+    pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=text)
     #
     pages = pdf.page_no()
     if 24 <= pages <= 828 and not cover_only and not word_only:
@@ -238,14 +238,14 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         pdf.set_fill_color(r=250, g=249, b=222)
         pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
         pdf.set_font('dejavu-sans', size=18)
-        text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}\n", dry_run=True, output="HEIGHT")
+        text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n* * *\n{author}\n", dry_run=True, output="HEIGHT")
         pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}\n")
         # COVER IMAGE
-        include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 20)
+        include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 10)
         #
         if include_cover_img:
             try:
-                prompt = f"Generate an image to be used as a part of a classic book cover, without any text letters or words on the image, reflecting the following description: {description}. The image needs to be without words, letters or any text and not contain the book with its cover"
+                prompt = f"Generate an image to be featured in a book cover. Exclude any depictions of books, book covers or written text. Meeting the criteria mentioned before, the image needs to be based on the following description: {description}"
                 img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
                 response = requests.get(img_url)
                 with open(dalle_cover_img_png, 'wb') as img:
@@ -281,7 +281,7 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         cols.new_column()
         #
         title_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=28)
+        pdf.set_font('dejavu-sans', size=24)
         title_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n\n{title}", dry_run=True, output="HEIGHT")
         title_p.write(f"\n\n{title}")
         cols.end_paragraph()
@@ -295,13 +295,13 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         #
         author_p = cols.paragraph(text_align='C')
         pdf.set_font('dejavu-sans', size=16)
-        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n{author}", dry_run=True, output="HEIGHT")
+        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n{author}\n", dry_run=True, output="HEIGHT")
         author_p.write(f"\n{author}")
         cols.end_paragraph()
         #
         if include_cover_img:
             try:
-                pdf.image(dalle_cover_img_png, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2, y=(234.95 - 40) / 2, w=100, h=100)
+                pdf.image(dalle_cover_img_png, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2 + 5, y=(234.95 - 40) / 2, w=100, h=100)
             except:
                 pass
         #
@@ -339,6 +339,7 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
         doc.add_page_break()
     if preface:
         preface_paragraph = doc.add_paragraph()
+        preface_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
         preface_run = preface_paragraph.add_run(preface)
         preface_font = preface_run.font
         preface_font.name = 'Verdana'
@@ -346,6 +347,7 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
         doc.add_page_break()
     if contents:
         contents_paragraph = doc.add_paragraph()
+        contents_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
         contents_run = contents_paragraph.add_run(contents)
         contents_font = contents_run.font
         contents_font.name = 'Verdana'
@@ -433,11 +435,12 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
-            if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or not book_author:
+            if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or "greek" in book_language.lower() or "tagalog" in book_language.lower() or not book_author or book_translator or book_illustrator:
                 continue
             #
-            illustration_pattern = re.compile(r'\[Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL)
-            book_txt = re.sub(illustration_pattern, '', book_txt)
+            illustrations_patterns = re.compile(r'\[Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL), re.compile(r'\[Ilustracion[^\]]*\]', re.IGNORECASE|re.DOTALL)
+            for _pattern in illustrations_patterns:
+                book_txt = re.sub(_pattern, '', book_txt)
             proofread_pattern = re.compile(r'(\s+)?Produced.*(https://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)(\r\n){4,10}', re.IGNORECASE|re.DOTALL)
             book_txt = re.sub(proofread_pattern, '', book_txt)
             #
@@ -476,7 +479,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             if book_language:
                 description_query += f" Write the review in this language: {book_language}"
             description_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
@@ -486,9 +489,9 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             )
             description = description_completion.choices[0].message.content
             #
-            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) for the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
+            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) that accurately reflect the main themes and genre of the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
             keywords_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
@@ -498,9 +501,9 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             )
             keywords = keywords_completion.choices[0].message.content
             #
-            bisac_codes_query = f'Give me up to 3 BISAC codes separated by semicolons (only the code, not its description and not numbered) for the book "{book_title}" by Author "{book_author}" with description "{description}", for its correct classification. Output format example would be: FIC019000; FIC031010; FIC014000'
+            bisac_codes_query = f'Give me up to 3 BISAC codes separated by semicolons (only the code in the official format, not its description and not numbered) for the book "{book_title}" by Author "{book_author}" with description "{description}", for its correct classification. Output format example would be: FIC019000; FIC031010; FIC014000'
             bisac_codes_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
@@ -512,7 +515,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             #
             published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
             published_year_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
@@ -524,7 +527,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             #
             author_year_of_death_query = f'Please, tell me the year of death of {book_author}, the author of the book {book_title}. Provide only the date in the format YYYY. If the author is still alive, please, provide the "XXXX".'
             author_year_of_death_completion = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
