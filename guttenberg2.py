@@ -379,14 +379,9 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 "Plain text URL",
                 "Title",
                 "Published Year",
-                "Google Book Publication Year",
-                "OpenLibrary Book Publication Year",
                 "Language",
                 "Author",
                 "Author Year of Death",
-                "Wikidata Author Year of Death",
-                "Wikipedia Author Year of Death",
-                "OpenLibrary Author Year of Death",
                 "Translator",
                 "Illustrator",
                 "Description",
@@ -395,7 +390,12 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 "Pages num",
                 "PDF file name",
                 "Cover PDF file name",
-                "Front cover WEBP file name"
+                "Front cover WEBP file name",
+                "Google Book Publication Year",
+                "OpenLibrary Book Publication Year",
+                "Wikidata Author Year of Death",
+                "Wikipedia Author Year of Death",
+                "OpenLibrary Author Year of Death",
             ]
         )
     try:
@@ -556,14 +556,9 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                         book_url,
                         book_title,
                         published_year,
-                        google_books_search_data.get('google_books_publication_year', 'N / A'),
-                        open_library_search_data.get('open_library_publication_year', 'N / A'),
                         book_language,
                         book_author,
                         author_year_of_death,
-                        wikidata_author_year_of_death,
-                        wikipedia_author_year_of_death,
-                        open_library_search_data.get('open_library_death_year', 'N / A'),
                         book_translator,
                         book_illustrator,
                         description,
@@ -572,7 +567,12 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                         pages_num,
                         book_fname,
                         cover_fname,
-                        front_cover_image_fname
+                        front_cover_image_fname,
+                        google_books_search_data.get('google_books_publication_year', 'N / A'),
+                        open_library_search_data.get('open_library_publication_year', 'N / A'),
+                        wikidata_author_year_of_death,
+                        wikipedia_author_year_of_death,
+                        open_library_search_data.get('open_library_death_year', 'N / A'),
                     ]
                 )
     except KeyboardInterrupt:
