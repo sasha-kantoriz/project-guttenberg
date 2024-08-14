@@ -600,13 +600,13 @@ def parse_args():
         description='Project Guttenberg books scrape script:',
         epilog="Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet"
     )
-    parser.add_argument('--indexes', dest='indexes', help='books indexes to process, comma separated')
+    parser.add_argument('-i', '--indexes', type=str, dest='indexes', default='', help='books indexes to process, comma separated')
     parser.add_argument('-s', '--start', type=int, dest='start', default=get_previous_last_index(),
                         help='start index of the program')
     parser.add_argument('-e', '--end', type=int, dest='end', default=get_latest_published_book_index(),
                         help='end index of the program')
-    parser.add_argument('--word', action='store_true', help='generate Word documents')
-    parser.add_argument('--cover', action='store_true', help='generate PDF covers')
+    parser.add_argument('-w', '--word', action='store_true', help='generate Word documents')
+    parser.add_argument('-c', '--cover', action='store_true', help='generate PDF covers')
     #
     return parser.parse_args()
 
