@@ -209,12 +209,12 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
     if notes:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, h=4, align='L', padding=8, text=notes)
+        pdf.multi_cell(w=0, h=4, align='J', padding=8, text=notes)
     # CONTENTS
     if contents:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, h=4.4, align='C', padding=8, text=contents)
+        pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=contents)
     # PREFACE
     if preface:
         pdf.add_page()
