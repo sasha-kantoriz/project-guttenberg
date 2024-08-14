@@ -456,6 +456,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             book_publisher_notes = book_txt[:contents_start_index]
             book_contents = book_txt[contents_start_index:contents_end_index]
             book_contents = re.sub(r'((\d+(–|-))?\d+(\n|$))', '\n', book_contents)
+            book_contents = re.sub(r'(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})(–|-))?M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\n', '\n', book_contents)
             #
             preface_search = re.search(r'preface(\.)?(\n){2,}', book_txt, re.IGNORECASE)
             if preface_search:
