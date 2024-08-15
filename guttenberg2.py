@@ -244,16 +244,13 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 10)
         #
         if include_cover_img:
-            try:
-                prompt = f"Generate an image to be featured in a book cover. Exclude any depictions of books, book covers or written text. Meeting the criteria mentioned before, the image needs to be based on the following description: {description}"
-                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
-                response = requests.get(img_url)
-                with open(dalle_cover_img_png, 'wb') as img:
-                    img.write(response.content)
-                pdf.image(dalle_cover_img_png, x=(152.4 - 100 + 6.35) / 2,
-                          y=(234.95 - 40) / 2 + 20, w=100, h=100)
-            except:
-                pass
+            prompt = f"Generate an image to be featured in a book cover. Exclude any depictions of books, book covers or written text. Meeting the criteria mentioned before, the image needs to be based on the following description: {description}"
+            img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
+            response = requests.get(img_url)
+            with open(dalle_cover_img_png, 'wb') as img:
+                img.write(response.content)
+            pdf.image(dalle_cover_img_png, x=(152.4 - 100 + 6.35) / 2,
+                      y=(234.95 - 40) / 2 + 20, w=100, h=100)
         pdf.output(front_cover_pdf_fname)
         front_cover_pages = convert_from_path(front_cover_pdf_fname)
         front_cover_pages[0].save(front_cover_image_tmp_fname, "PNG")
@@ -443,30 +440,33 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 book_txt = re.sub(_pattern, '', book_txt)
             proofread_pattern = re.compile(r'(\s+)?Produced.*(https://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)(\r\n){4,10}', re.IGNORECASE|re.DOTALL)
             book_txt = re.sub(proofread_pattern, '', book_txt)
-            #
             book_txt = book_txt.replace('\r\n', '\n')
             #
+            # BOOK PUBLISHER NOTES
+            book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n')
+            if book_publisher_notes_end_index != -1:
+                book_publisher_notes_end_index += 100
+            else:
+                book_publisher_notes_end_index = 0
+            book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
+            # BOOK CONTENTS
             contents_search = re.search(r"(content|contents|chapters)(:)?(\n){2,}", book_txt, re.IGNORECASE)
             if contents_search and not re.search(r"(content|contents|chapters)(:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
             else:
                 contents_end_index = contents_start_index = re.search(r"\n\n\n", book_txt).start()
-            #
-            book_publisher_notes = book_txt[:contents_start_index]
             book_contents = book_txt[contents_start_index:contents_end_index]
-            book_contents = re.sub(r'((\d+(–|-))?\d+(\n|$))', '\n', book_contents)
-            book_contents = re.sub(r'(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})(–|-))?M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\n', '\n', book_contents)
             #
             preface_search = re.search(r'preface(\.)?(\n){2,}', book_txt, re.IGNORECASE)
             if preface_search:
                 preface_start_index = preface_search.start()
                 preface_end_index = preface_start_index + len(preface_search.group()) + 10 + book_txt[preface_start_index + len(preface_search.group()) + 10:].find('\n\n\n')
                 book_preface = book_txt[preface_start_index:preface_end_index]
-                book_txt = book_txt[preface_end_index:]
             else:
+                preface_end_index = 0
                 book_preface = ""
-                book_txt = book_txt[contents_end_index:]
+            book_txt = book_txt[max(contents_end_index, preface_end_index):]
             #
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents = book_contents.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '\n')
