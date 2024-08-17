@@ -1,3 +1,18 @@
+"""Guttenberg2.py.
+
+Usage:
+  guttenberg2.py [-i <indexes>] [-s <start>] [-e <end>] [-w] [-c]
+  guttenberg2.py (-h | --help)
+
+Options:
+  -i --indexes=<indexes>  Books indexes to process, comma separated.
+  -s --start=<start>      Start index of the program.
+  -e --end=<end>          End index of the program.
+  -w --word               Generate Word documents.
+  -c --cover              Generate PDF covers.
+  -h --help               Show this screen.
+"""
+
 import os
 import re
 import sys
@@ -7,6 +22,7 @@ import requests
 import fpdf
 import docx
 import openpyxl
+from docopt import docopt
 from time import sleep
 from datetime import datetime
 from random import randint
@@ -438,8 +454,13 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             illustrations_patterns = re.compile(r'\[Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL), re.compile(r'\[Ilustracion[^\]]*\]', re.IGNORECASE|re.DOTALL)
             for _pattern in illustrations_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
-            proofread_pattern = re.compile(r'(\s+)?Produced.*(https://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)(\r\n){4,10}', re.IGNORECASE|re.DOTALL)
-            book_txt = re.sub(proofread_pattern, '', book_txt)
+            proofread_patterns = [
+                re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\.(\r\n){2,10}', re.IGNORECASE | re.DOTALL)
+            ]
+            breakpoint()
+            for _pattern in proofread_patterns:
+                book_txt = re.sub(_pattern, '', book_txt)
             book_txt = book_txt.replace('\r\n', '\n')
             #
             # BOOK PUBLISHER NOTES
@@ -546,40 +567,43 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             ############################################################################################################
             # Book files Generation
             ############################################################################################################
-            book_fname, cover_fname, front_cover_image_fname, pages_num, include_book_flag = generate_book_pdfs(
-                run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, cover_only, word_only
-            )
-            if (24 <= pages_num <= 828) and (not cover_only or word_only):
-                generate_book_docx(
-                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt
+            try:
+                book_fname, cover_fname, front_cover_image_fname, pages_num, include_book_flag = generate_book_pdfs(
+                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, cover_only, word_only
                 )
-            #
-            if include_book_flag and not (cover_only or word_only):
-                ws.append(
-                    [
-                        i,
-                        book_url,
-                        book_title,
-                        published_year,
-                        book_language,
-                        book_author,
-                        author_year_of_death,
-                        book_translator,
-                        book_illustrator,
-                        description,
-                        keywords,
-                        bisac_codes,
-                        pages_num,
-                        book_fname,
-                        cover_fname,
-                        front_cover_image_fname,
-                        google_books_search_data.get('google_books_publication_year', 'N / A'),
-                        open_library_search_data.get('open_library_publication_year', 'N / A'),
-                        wikidata_author_year_of_death,
-                        wikipedia_author_year_of_death,
-                        open_library_search_data.get('open_library_death_year', 'N / A'),
-                    ]
-                )
+                if (24 <= pages_num <= 828) and (not cover_only or word_only):
+                    generate_book_docx(
+                        run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt
+                    )
+                #
+                if include_book_flag and not (cover_only or word_only):
+                    ws.append(
+                        [
+                            i,
+                            book_url,
+                            book_title,
+                            published_year,
+                            book_language,
+                            book_author,
+                            author_year_of_death,
+                            book_translator,
+                            book_illustrator,
+                            description,
+                            keywords,
+                            bisac_codes,
+                            pages_num,
+                            book_fname,
+                            cover_fname,
+                            front_cover_image_fname,
+                            google_books_search_data.get('google_books_publication_year', 'N / A'),
+                            open_library_search_data.get('open_library_publication_year', 'N / A'),
+                            wikidata_author_year_of_death,
+                            wikipedia_author_year_of_death,
+                            open_library_search_data.get('open_library_death_year', 'N / A'),
+                        ]
+                    )
+            except:
+                continue
     except KeyboardInterrupt:
         update_index_flag = False
     except Exception as e:
