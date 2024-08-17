@@ -21,8 +21,7 @@ import pathlib
 import requests
 import fpdf
 import docx
-import openpyxl
-from docopt import docopt
+import openpyxl`
 from time import sleep
 from datetime import datetime
 from random import randint
