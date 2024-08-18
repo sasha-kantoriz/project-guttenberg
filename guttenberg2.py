@@ -21,7 +21,7 @@ import pathlib
 import requests
 import fpdf
 import docx
-import openpyxl`
+import openpyxl
 from time import sleep
 from datetime import datetime
 from random import randint
@@ -457,7 +457,6 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\.(\r\n){2,10}', re.IGNORECASE | re.DOTALL)
             ]
-            breakpoint()
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             book_txt = book_txt.replace('\r\n', '\n')
