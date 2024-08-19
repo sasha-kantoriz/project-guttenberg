@@ -454,13 +454,12 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             for _pattern in illustrations_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             proofread_patterns = [
-                re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE | re.DOTALL)
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             book_txt = book_txt.replace('\r\n', '\n')
-            #
             # BOOK PUBLISHER NOTES
             book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n')
             if book_publisher_notes_end_index != -1:
