@@ -455,7 +455,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 book_txt = re.sub(_pattern, '', book_txt)
             proofread_patterns = [
                 re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\(.*\)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?\.(\r\n){2,10}', re.IGNORECASE | re.DOTALL)
+                re.compile(r'(\s+)?Produced.*(https://|http://)?(www)?(\.)pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE | re.DOTALL)
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
