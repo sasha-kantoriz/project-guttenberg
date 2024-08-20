@@ -259,22 +259,28 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 10)
         #
         if include_cover_img:
-            prompt = f"Generate an image to be featured in a book cover. Exclude any depictions of books, book covers or written text. Meeting the criteria mentioned before, the image needs to be based on the following description: {description}"
-            img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
-            response = requests.get(img_url)
-            with open(dalle_cover_img_png, 'wb') as img:
-                img.write(response.content)
-            pdf.image(dalle_cover_img_png, x=(152.4 - 100 + 6.35) / 2,
-                      y=(234.95 - 40) / 2 + 20, w=100, h=100)
+            try:
+                prompt = f"Generate an image to be featured in a book cover. Exclude any depictions of books, book covers or written text. Meeting the criteria mentioned before, the image needs to be based on the following description: {description}"
+                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
+                response = requests.get(img_url)
+                with open(dalle_cover_img_png, 'wb') as img:
+                    img.write(response.content)
+                pdf.image(dalle_cover_img_png, x=(152.4 - 100 + 6.35) / 2,
+                          y=(234.95 - 40) / 2 + 20, w=100, h=100)
+            except:
+                pass
         pdf.output(front_cover_pdf_fname)
-        front_cover_pages = convert_from_path(front_cover_pdf_fname)
-        front_cover_pages[0].save(front_cover_image_tmp_fname, "PNG")
-        cover_webp = Image.open(front_cover_image_tmp_fname)
-        cover_webp.save(front_cover_webp_fname, "WEBP")
-        cover_webp.close()
-        cover_image = Image.open(dalle_cover_img_png)
-        cover_image.save(dalle_cover_img_webp, "WEBP")
-        cover_image.close()
+        try:
+            front_cover_pages = convert_from_path(front_cover_pdf_fname)
+            front_cover_pages[0].save(front_cover_image_tmp_fname, "PNG")
+            cover_webp = Image.open(front_cover_image_tmp_fname)
+            cover_webp.save(front_cover_webp_fname, "WEBP")
+            cover_webp.close()
+            cover_image = Image.open(dalle_cover_img_png)
+            cover_image.save(dalle_cover_img_webp, "WEBP")
+            cover_image.close()
+        except:
+            pass
         # Full cover
         cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
         pdf = fpdf.FPDF(format=(cover_width, cover_height))
@@ -319,9 +325,12 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         #
         cols.render()
         pdf.output(cover_pdf_fname)
-        os.remove(front_cover_pdf_fname)
-        os.remove(front_cover_image_tmp_fname)
-        os.remove(dalle_cover_img_png)
+        try:
+            os.remove(front_cover_pdf_fname)
+            os.remove(front_cover_image_tmp_fname)
+            os.remove(dalle_cover_img_png)
+        except:
+            pass
     #
     return (
         interior_pdf_fname,
@@ -600,7 +609,8 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                         ]
                     )
             except:
-                continue
+                import traceback
+                print(traceback.format_exc())
     except KeyboardInterrupt:
         update_index_flag = False
     except Exception as e:
