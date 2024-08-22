@@ -482,9 +482,8 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
             else:
-                contents_end_index = contents_start_index = re.search(r"\n\n\n", book_txt).start()
+                contents_end_index = contents_start_index = 0
             book_contents = book_txt[contents_start_index:contents_end_index]
-            #
             preface_search = re.search(r'preface(\.)?(\n){2,}', book_txt, re.IGNORECASE)
             if preface_search:
                 preface_start_index = preface_search.start()
