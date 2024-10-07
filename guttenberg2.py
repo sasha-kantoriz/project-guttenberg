@@ -1,16 +1,21 @@
 """Guttenberg2.py.
 
-Usage:
-  guttenberg2.py [-i <indexes>] [-s <start>] [-e <end>] [-w] [-c]
-  guttenberg2.py (-h | --help)
+usage: python3 guttenberg2.py [options]
 
-Options:
-  -i --indexes=<indexes>  Books indexes to process, comma separated.
-  -s --start=<start>      Start index of the program.
-  -e --end=<end>          End index of the program.
-  -w --word               Generate Word documents.
-  -c --cover              Generate PDF covers.
-  -h --help               Show this screen.
+Project Guttenberg books scrape script:
+
+options:
+  -h, --help            show this help message and exit
+  -i INDEXES, --indexes INDEXES
+                        books indexes to process, comma separated
+  -s START, --start START
+                        start index of the program
+  -e END, --end END     end index of the program
+  -w, --word            generate Word documents
+  -c, --cover           generate PDF covers
+  --interior            generate PDF interior only
+
+Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet
 """
 
 import os
@@ -199,7 +204,7 @@ def get_previous_last_index():
         return 1
 
 
-def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, cover_only=False, word_only=False):
+def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, interior_only=False, cover_only=False, word_only=False):
     interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
@@ -244,7 +249,7 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
     if 24 <= pages <= 828 and not cover_only and not word_only:
         pdf.output(interior_pdf_fname)
     # COVERS
-    if 24 <= pages <= 828 and not word_only:
+    if 24 <= pages <= 828 and not (word_only or interior_only):
         # FRONT COVER
         cover_width, cover_height = 152.4 + 3.175, 234.95
         pdf = fpdf.FPDF(format=(cover_width, cover_height))
@@ -383,7 +388,7 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
     doc.save(f"{folder}/word/{_id}_paperback_interior.docx")
 
 
-def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes=None):
+def get_books(run_folder, start, end, interior_only=False, cover_only=False, word_only=False, indexes=None):
     update_index_flag = True
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     if not (cover_only or word_only):
@@ -576,14 +581,14 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             ############################################################################################################
             try:
                 book_fname, cover_fname, front_cover_image_fname, pages_num, include_book_flag = generate_book_pdfs(
-                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, cover_only, word_only
+                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, interior_only,cover_only, word_only
                 )
-                if (24 <= pages_num <= 828) and (not cover_only or word_only):
+                if (24 <= pages_num <= 828) and (not (cover_only or interior_only) or word_only):
                     generate_book_docx(
                         run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt
                     )
                 #
-                if include_book_flag and not (cover_only or word_only):
+                if include_book_flag and not (interior_only or cover_only or word_only):
                     ws.append(
                         [
                             i,
@@ -641,6 +646,7 @@ def parse_args():
                         help='end index of the program')
     parser.add_argument('-w', '--word', action='store_true', help='generate Word documents')
     parser.add_argument('-c', '--cover', action='store_true', help='generate PDF covers')
+    parser.add_argument('--interior', action='store_true', help='generate PDF interior only')
     #
     return parser.parse_args()
 
@@ -655,4 +661,4 @@ if __name__ == '__main__':
     pathlib.Path(f"{run_folder}/pdf").mkdir(parents=True, exist_ok=True)
     #
     args = parse_args()
-    get_books(run_folder, args.start, args.end, args.cover, args.word, args.indexes.split(',') if args.indexes else None)
+    get_books(run_folder, args.start, args.end, args.interior, args.cover, args.word, args.indexes.split(',') if args.indexes else None)
