@@ -401,10 +401,10 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 "Book ID",
                 "Plain text URL",
                 "Title",
-                "Published Year",
+                # "Published Year",
                 "Language",
                 "Author",
-                "Author Year of Death",
+                # "Author Year of Death",
                 "Translator",
                 "Illustrator",
                 "Description",
@@ -456,7 +456,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
-            if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or "greek" in book_language.lower() or "tagalog" in book_language.lower() or not book_author or book_translator or book_illustrator:
+            if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or "greek" in book_language.lower() or "tagalog" in book_language.lower() or "japanese" in book_language.lower() or "slovenian" in book_language.lower() or "telugu" in book_language.lower() or "Gaelic, Scottish" in book_language.lower() or "French, Dutch" in book_language.lower() or "English, Spanish" in book_language.lower() or "ojibwa" in book_language.lower() or not book_author or book_translator or book_illustrator:
                 continue
             #
             illustrations_patterns = re.compile(r'\[Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL), re.compile(r'\[Ilustracion[^\]]*\]', re.IGNORECASE|re.DOTALL)
@@ -541,6 +541,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
             )
             bisac_codes = bisac_codes_completion.choices[0].message.content
             #
+            """
             published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
             published_year_completion = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -564,6 +565,7 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                 ]
             )
             author_year_of_death = author_year_of_death_completion.choices[0].message.content
+            """
             # Extended Metadata
             google_books_search_data = search_google_books(book_title, book_author)
             open_library_search_data = search_open_library(book_title, book_author)
@@ -587,10 +589,10 @@ def get_books(run_folder, start, end, cover_only=False, word_only=False, indexes
                             i,
                             book_url,
                             book_title,
-                            published_year,
+                            # published_year,
                             book_language,
                             book_author,
-                            author_year_of_death,
+                            # author_year_of_death,
                             book_translator,
                             book_illustrator,
                             description,
