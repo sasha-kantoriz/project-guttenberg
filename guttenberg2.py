@@ -447,6 +447,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             #
             book_author = re.search(r"Author: (.*)\n", book_txt)
             book_author = book_author.groups()[0] if book_author else ""
+            book_author = book_author.strip().replace('\\', '-').replace('/', '-').replace('&', ' and ')
             book_language = re.search(r"Language: (.*)\n", book_txt, re.IGNORECASE)
             book_language = book_language.groups()[0] if book_language else ""
             book_translator = re.search(r"Translator: (.*)\n", book_txt, re.IGNORECASE)
@@ -455,6 +456,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_illustrator = book_illustrator.groups()[0] if book_illustrator else ""
             book_title = re.search(r"Title: (.*)\n", book_txt)
             book_title = book_title.groups()[0] if book_title else ""
+            book_title = book_title.strip().replace('\\', '-').replace('/', '-').replace('&', ' and ')
             book_content_start_index = re.search(r"\*\*\* START OF THE PROJECT GUTENBERG .* \*\*\*", book_txt, re.IGNORECASE)
             book_content_start_index = book_content_start_index.end() if book_content_start_index else 0
             book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt, re.IGNORECASE)
@@ -464,18 +466,25 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or "greek" in book_language.lower() or "tagalog" in book_language.lower() or "japanese" in book_language.lower() or "slovenian" in book_language.lower() or "telugu" in book_language.lower() or "Gaelic, Scottish" in book_language.lower() or "French, Dutch" in book_language.lower() or "English, Spanish" in book_language.lower() or "ojibwa" in book_language.lower() or not book_author or book_translator or book_illustrator:
                 continue
             #
-            illustrations_patterns = re.compile(r'\[Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL), re.compile(r'\[Ilustracion[^\]]*\]', re.IGNORECASE|re.DOTALL)
+            illustrations_patterns = [
+                re.compile(r'\[(\s+)?Illustration[^\]]*\]', re.IGNORECASE|re.DOTALL),
+                re.compile(r'\[(\s+)?Ilustracion[^\]]*\]', re.IGNORECASE|re.DOTALL),
+                re.compile(r'\[(\s+)?Ilustración[^\]]*\]', re.IGNORECASE|re.DOTALL),
+            ]
             for _pattern in illustrations_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             proofread_patterns = [
-                re.compile(r'(\s+)?Produced.* at (https://|http://)?(www)?(\.)pgdp\.net(\s+)?\(.*\s+by\s+The\s+Internet\s+Archive\)(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'(\s+)?Produced.* at (https://|http://)?(www)?(\.)pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL)
+                re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?\(.*\s+by\s+The\s+Internet\s+Archive\)(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Online(\s+)?distributed(\s+)?proofreading(\s+)?team(\s+)?at(\s+)?(http://|https://)?(www\.)?pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Produced(\s+)?by(\s+)?www.ebooksgratuits.com(\s+)?.+?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?\(.+?\)(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE | re.DOTALL),
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             book_txt = book_txt.replace('\r\n', '\n')
             # BOOK PUBLISHER NOTES
-            book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n')
+            book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n\n')
             if book_publisher_notes_end_index != -1:
                 book_publisher_notes_end_index += 100
             else:
@@ -485,20 +494,26 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             contents_search = re.search(r"(content|contents|chapters)(:)?(\n){2,}", book_txt, re.IGNORECASE)
             if contents_search and not re.search(r"(content|contents|chapters)(:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
-                contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
+                contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n\n')
             else:
                 contents_end_index = contents_start_index = 0
             book_contents = book_txt[contents_start_index:contents_end_index]
             preface_search = re.search(r'preface(\.)?(\n){2,}', book_txt, re.IGNORECASE)
             if preface_search:
                 preface_start_index = preface_search.start()
-                preface_end_index = preface_start_index + len(preface_search.group()) + 10 + book_txt[preface_start_index + len(preface_search.group()) + 10:].find('\n\n\n')
+                preface_end_index = preface_start_index + len(preface_search.group()) + 10 + book_txt[preface_start_index + len(preface_search.group()) + 10:].find('\n\n\n\n')
                 book_preface = book_txt[preface_start_index:preface_end_index]
             else:
                 preface_end_index = 0
                 book_preface = ""
-            book_txt = book_txt[max(contents_end_index, preface_end_index):]
             #
+            book_txt = book_txt[max(contents_end_index, preface_end_index):]
+            if book_txt.find('LIST OF ILLUSTRATIONS') != -1:
+                illustrations_start_index = book_txt.find('LIST OF ILLUSTRATIONS')
+                illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
+                book_txt = book_txt[illustrations_end_index:]
+            if book_contents in book_publisher_notes:
+                book_publisher_notes = ""
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents = book_contents.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '\n')
             book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
@@ -545,37 +560,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 ]
             )
             bisac_codes = bisac_codes_completion.choices[0].message.content
-            #
-            """
-            published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
-            published_year_completion = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": published_year_query
-                    },
-                ]
-            )
-            published_year = published_year_completion.choices[0].message.content
-            #
-            author_year_of_death_query = f'Please, tell me the year of death of {book_author}, the author of the book {book_title}. Provide only the date in the format YYYY. If the author is still alive, please, provide the "XXXX".'
-            author_year_of_death_completion = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": author_year_of_death_query
-                    },
-                ]
-            )
-            author_year_of_death = author_year_of_death_completion.choices[0].message.content
-            """
-            # Extended Metadata
-            google_books_search_data = search_google_books(book_title, book_author)
-            open_library_search_data = search_open_library(book_title, book_author)
-            wikipedia_author_year_of_death = search_wikipedia_author(book_author)
-            wikidata_author_year_of_death = search_wikidata(book_author)
+
             ############################################################################################################
             # Book files Generation
             ############################################################################################################
@@ -589,6 +574,38 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                     )
                 #
                 if include_book_flag and not (interior_only or cover_only or word_only):
+                    #
+                    """
+                    published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
+                    published_year_completion = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": published_year_query
+                            },
+                        ]
+                    )
+                    published_year = published_year_completion.choices[0].message.content
+                    #
+                    author_year_of_death_query = f'Please, tell me the year of death of {book_author}, the author of the book {book_title}. Provide only the date in the format YYYY. If the author is still alive, please, provide the "XXXX".'
+                    author_year_of_death_completion = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": author_year_of_death_query
+                            },
+                        ]
+                    )
+                    author_year_of_death = author_year_of_death_completion.choices[0].message.content
+                    """
+                    # Extended Metadata
+                    google_books_search_data = search_google_books(book_title, book_author)
+                    open_library_search_data = search_open_library(book_title, book_author)
+                    wikipedia_author_year_of_death = search_wikipedia_author(book_author)
+                    wikidata_author_year_of_death = search_wikidata(book_author)
+                    #
                     ws.append(
                         [
                             i,
