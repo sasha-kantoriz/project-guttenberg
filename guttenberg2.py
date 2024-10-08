@@ -491,8 +491,8 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 book_publisher_notes_end_index = 0
             book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
             # BOOK CONTENTS
-            contents_search = re.search(r"(content|contents|chapters)(:)?(\n){2,}", book_txt, re.IGNORECASE)
-            if contents_search and not re.search(r"(content|contents|chapters)(:)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
+            contents_search = re.search(r"(content|contents|chapters)(:)?(\.)?(\n){2,}", book_txt, re.IGNORECASE)
+            if contents_search and not re.search(r"(content|contents|chapters)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n\n')
             else:
