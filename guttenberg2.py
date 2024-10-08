@@ -205,11 +205,12 @@ def get_previous_last_index():
 
 
 def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, interior_only=False, cover_only=False, word_only=False):
-    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
+    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
         f"{folder}/front_cover//{_id}.pdf",
         f"{folder}/front_cover/{_id}.webp",
+        f"{folder}/front_cover/{_id}_square.webp",
         f"{folder}/front_cover/{_id}.png",
         f"{folder}/imgs/{_id}.png",
         f"{folder}/imgs/{_id}.webp"
@@ -279,6 +280,11 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
             front_cover_pages = convert_from_path(front_cover_pdf_fname)
             front_cover_pages[0].save(front_cover_image_tmp_fname, "PNG")
             cover_webp = Image.open(front_cover_image_tmp_fname)
+            width, height = cover_webp.size
+            max_dim = max(width, height)
+            square_webp = Image.new('RGB', (max_dim, max_dim), (255, 255, 255))
+            square_webp.paste(cover_webp, ((max_dim - width) // 2, (max_dim - height) // 2))
+            square_webp.save(front_cover_square_fname, "WEBP")
             cover_webp.save(front_cover_webp_fname, "WEBP")
             cover_webp.close()
             cover_image = Image.open(dalle_cover_img_png)
