@@ -481,8 +481,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 book_txt = re.sub(_pattern, '', book_txt)
             proofread_patterns = [
                 re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?\(.*\s+by\s+The\s+Internet\s+Archive\)(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'(\s+)?Online(\s+)?distributed(\s+)?proofreading(\s+)?team(\s+)?at(\s+)?(http://|https://)?(www\.)?pgdp\.net(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(.+?)?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'(\s+)?Produced(\s+)?by(\s+)?www.ebooksgratuits.com(\s+)?.+?(\r\n){2,10}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'(\s+)?Produced.*(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?\(.+?\)(\s+)?(\.)?(\r\n){2,10}', re.IGNORECASE | re.DOTALL),
             ]
@@ -646,7 +645,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
         update_index_flag = False
         update_last_index(i)
     finally:
-        if not (word_only or cover_only):
+        if not (interior_only or word_only or cover_only):
             wb.save('Project Guttenberg.xlsx')
         # update last published book index
         if update_index_flag:
