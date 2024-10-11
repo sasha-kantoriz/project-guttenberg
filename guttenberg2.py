@@ -397,7 +397,7 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
 def get_books(run_folder, start, end, interior_only=False, cover_only=False, word_only=False, indexes=None):
     update_index_flag = True
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
-    if not (cover_only or word_only):
+    if not (interior_only or cover_only or word_only):
         try:
             wb = openpyxl.load_workbook('Project Guttenberg.xlsx')
         except:
@@ -542,30 +542,6 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 ]
             )
             description = description_completion.choices[0].message.content
-            #
-            keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) that accurately reflect the main themes and genre of the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
-            keywords_completion = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": keywords_query
-                    },
-                ]
-            )
-            keywords = keywords_completion.choices[0].message.content
-            #
-            bisac_codes_query = f'Give me up to 3 BISAC codes separated by semicolons (only the code in the official format, not its description and not numbered) for the book "{book_title}" by Author "{book_author}" with description "{description}", for its correct classification. Output format example would be: FIC019000; FIC031010; FIC014000'
-            bisac_codes_completion = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": bisac_codes_query
-                    },
-                ]
-            )
-            bisac_codes = bisac_codes_completion.choices[0].message.content
 
             ############################################################################################################
             # Book files Generation
@@ -580,6 +556,29 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                     )
                 #
                 if include_book_flag and not (interior_only or cover_only or word_only):
+                    keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) that accurately reflect the main themes and genre of the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
+                    keywords_completion = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": keywords_query
+                            },
+                        ]
+                    )
+                    keywords = keywords_completion.choices[0].message.content
+                    #
+                    bisac_codes_query = f'Give me up to 3 BISAC codes separated by semicolons (only the code in the official format, not its description and not numbered) for the book "{book_title}" by Author "{book_author}" with description "{description}", for its correct classification. Output format example would be: FIC019000; FIC031010; FIC014000'
+                    bisac_codes_completion = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": bisac_codes_query
+                            },
+                        ]
+                    )
+                    bisac_codes = bisac_codes_completion.choices[0].message.content
                     #
                     """
                     published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
