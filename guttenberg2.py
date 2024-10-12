@@ -529,9 +529,9 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 preface_end_index = 0
                 book_preface = ""
             # BOOK INDEX
-            appendix_search = re.search(r'(INDEX|Index|APPENDIX|Appendix)(\.)?(:)?(\n){2}', book_txt)
+            appendix_search = re.search(r'(INDEX|Index|APPENDIX|Appendix)(\.)?(:)?(\n){2}', book_txt[int(len(book_txt) * 0.85):], re.IGNORECASE)
             if appendix_search:
-                appendix_start_index = appendix_search.start()
+                appendix_start_index = int(len(book_txt) * 0.85) + appendix_search.start()
                 appendix_end_index = appendix_start_index + len(appendix_search.group()) + 10 + book_txt[appendix_start_index + len(appendix_search.group()) + 10:].find('\n\n\n\n')
                 book_appendix = book_txt[appendix_start_index:appendix_end_index]
             else:
