@@ -204,7 +204,7 @@ def get_previous_last_index():
         return 1
 
 
-def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, appendix, interior_only=False, cover_only=False, word_only=False):
+def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, interior_only=False, cover_only=False, word_only=False):
     interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
@@ -245,11 +245,6 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=10)
     pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=text)
-    # INDEX
-    if appendix:
-        pdf.add_page()
-        pdf.set_font("dejavu-sans", size=10)
-        pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=appendix)
     #
     pages = pdf.page_no()
     if 24 <= pages <= 828 and not cover_only and not word_only:
@@ -532,11 +527,11 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             appendix_search = re.search(r'(INDEX|Index|APPENDIX|Appendix)(\.)?(:)?(\n){2}', book_txt[int(len(book_txt) * 0.85):], re.IGNORECASE)
             if appendix_search:
                 appendix_start_index = int(len(book_txt) * 0.85) + appendix_search.start()
-                appendix_end_index = appendix_start_index + len(appendix_search.group()) + 10 + book_txt[appendix_start_index + len(appendix_search.group()) + 10:].find('\n\n\n\n')
-                book_appendix = book_txt[appendix_start_index:appendix_end_index]
+                # appendix_end_index = appendix_start_index + len(appendix_search.group()) + 10 + book_txt[appendix_start_index + len(appendix_search.group()) + 10:].find('\n\n\n\n')
+                # book_appendix = book_txt[appendix_start_index:appendix_end_index]
             else:
                 appendix_start_index = len(book_txt)
-                book_appendix = ""
+                # book_appendix = ""
             #
             book_txt = book_txt[max(contents_end_index, preface_end_index):appendix_start_index]
             #
@@ -550,7 +545,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_contents = book_contents.replace('\n\n\n', '\n').replace('\n\n', '\n').replace('_', '').replace('  ', ' ').replace('--', '-')
             book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_txt = book_txt.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
-            book_appendix = book_appendix.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            # book_appendix = book_appendix.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             ############################################################################################################
             # Book Metadata
             ############################################################################################################
@@ -575,7 +570,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ############################################################################################################
             try:
                 book_fname, cover_fname, front_cover_image_fname, pages_num = generate_book_pdfs(
-                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, book_appendix, interior_only,cover_only, word_only
+                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, interior_only,cover_only, word_only
                 )
                 if (24 <= pages_num <= 828) and (not (cover_only or interior_only) or word_only):
                     generate_book_docx(
