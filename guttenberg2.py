@@ -482,10 +482,11 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             proofread_patterns = [
                 re.compile(r'Produced(.+?)?(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'Produced(.+?)?(\s+)?by(\s+)?(www\.)?ebooksgratuits\.com(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'E(-)?(text|book)(\s+)?(produced|prepared)(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(this\s+)?E(-)?(text|book)(\s+)?(produced|prepared)(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
+            book_txt = re.sub(re.compile(r'Produced\s+by\s+.+?(\r\n){4}', re.IGNORECASE|re.DOTALL), '', book_txt[:len(book_txt) * 0.05])
             transcriber_notes_patterns = [
                 re.compile(r'(\[)?Transcriber(.+?)?(\s+)?Note(s)?(\s+)?(:)?(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE | re.DOTALL),
                 re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE | re.DOTALL),
@@ -516,7 +517,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             else:
                 contents_end_index = contents_start_index = 0
             book_contents = book_txt[contents_start_index:contents_end_index]
-            preface_search = re.search(r'(preface|foreword)(\.)?(\n){2}', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
+            preface_search = re.search(r'(preface|foreword|prefatory note)(\.)?(\n){2}', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
             if preface_search:
                 preface_start_index = preface_search.start()
                 preface_end_index = preface_start_index + len(preface_search.group()) + 10 + book_txt[preface_start_index + len(preface_search.group()) + 10:].find('\n\n\n\n')
