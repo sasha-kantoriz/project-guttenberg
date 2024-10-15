@@ -472,6 +472,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 continue
             #
             illustrations_patterns = [
+                re.compile(r'\[(\s+)?Cover Illustration](\r\n){2}', re.IGNORECASE | re.DOTALL),
                 re.compile(r'\[(\s+)?Illustration](\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[(\s+)?Illustration.+?](\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[(\s+)?Ilustracion.+?](\r\n){2}', re.IGNORECASE|re.DOTALL),
@@ -486,7 +487,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
-            book_txt = re.sub(re.compile(r'Produced\s+by\s+.+?(\r\n){4}', re.IGNORECASE|re.DOTALL), '', book_txt[:int(len(book_txt) * 0.05)])
+            # book_txt = re.sub(re.compile(r'Produced\s+by\s+.+?\r\n', re.IGNORECASE|re.DOTALL), '', book_txt[:int(len(book_txt) * 0.05)])
             transcriber_notes_patterns = [
                 re.compile(r'(\[)?Transcriber(.+?)?(\s+)?Note(s)?(\s+)?(:)?(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE | re.DOTALL),
                 re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE | re.DOTALL),
