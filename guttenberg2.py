@@ -472,7 +472,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 continue
             #
             illustrations_patterns = [
-                re.compile(r'\[(\s+)?Cover Illustration](\r\n){2}', re.IGNORECASE | re.DOTALL),
+                re.compile(r'\[(\s+)?Cover Illustration](\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[(\s+)?Illustration](\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[(\s+)?Illustration.+?](\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[(\s+)?Ilustracion.+?](\r\n){2}', re.IGNORECASE|re.DOTALL),
@@ -481,23 +481,25 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             for _pattern in illustrations_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             proofread_patterns = [
-                re.compile(r'Produced(.+?)?(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'Produced(.+?)?(\s+)?by(\s+)?(www\.)?ebooksgratuits\.com(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'(this\s+)?E(-)?(text|book)(\s+)?(produced|prepared)(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'Produced(.+?)?(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'Produced(.+?)?(\s+)?by(\s+)?(www\.)?ebooksgratuits\.com(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(this\s+)?E(-)?(text|book)(\s+)?(is|was)?(\s+)?(produced|prepared)(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
-            # book_txt = re.sub(re.compile(r'Produced\s+by\s+.+?\r\n', re.IGNORECASE|re.DOTALL), '', book_txt[:int(len(book_txt) * 0.05)])
+            produced_by_search = re.search(r'Produced\s+by\s+.+?\r\n', book_txt[:int(len(book_txt) * 0.05)], re.IGNORECASE|re.DOTALL)
+            if produced_by_search:
+                book_txt = re.sub(produced_by_search.group(0), '', book_txt)
             transcriber_notes_patterns = [
-                re.compile(r'(\[)?Transcriber(.+?)?(\s+)?Note(s)?(\s+)?(:)?(\s+)?(.+?)?(\r\n){4}', re.IGNORECASE | re.DOTALL),
-                re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE | re.DOTALL),
-                re.compile(r'\[Note(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE | re.DOTALL),
+                re.compile(r'(\[)?(\+)?(-{3,}\+)?(\s+)?(\|)?Transcriber(\'s|’s)?(\s+)?Note(s)?(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'\[Note(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
             ]
             for _pattern in transcriber_notes_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
             start_end_patterns = [
-                re.compile(r'START(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){4}', re.IGNORECASE|re.DOTALL),
-                re.compile(r'END(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){4}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'START(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){2}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'END(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){2}', re.IGNORECASE|re.DOTALL),
             ]
             for _pattern in start_end_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
@@ -526,6 +528,31 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             else:
                 preface_end_index = 0
                 book_preface = ""
+            # check if sections are separated by 3 newlines
+            if book_publisher_notes_end_index == contents_end_index == preface_end_index:
+                # BOOK PUBLISHER NOTES
+                book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n')
+                if book_publisher_notes_end_index != -1:
+                    book_publisher_notes_end_index += 100
+                else:
+                    book_publisher_notes_end_index = 0
+                book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
+                # BOOK CONTENTS
+                contents_search = re.search(r"(content|contents|contents of volume i|chapters|file numbers)(:)?(\.)?(\n){2}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
+                if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
+                    contents_start_index = contents_search.start()
+                    contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
+                else:
+                    contents_end_index = contents_start_index = 0
+                book_contents = book_txt[contents_start_index:contents_end_index]
+                preface_search = re.search(r'(preface|foreword|prefatory note)(\.)?(\n){2}', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
+                if preface_search:
+                    preface_start_index = preface_search.start()
+                    preface_end_index = preface_start_index + len(preface_search.group()) + 10 + book_txt[preface_start_index + len(preface_search.group()) + 10:].find('\n\n\n')
+                    book_preface = book_txt[preface_start_index:preface_end_index]
+                else:
+                    preface_end_index = 0
+                    book_preface = ""
             # BOOK INDEX
             appendix_search = re.search(r'(INDEX|Index|APPENDIX|Appendix)(\.)?(:)?(\n){2}', book_txt[int(len(book_txt) * 0.85):], re.IGNORECASE)
             if appendix_search:
@@ -536,13 +563,13 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 appendix_start_index = len(book_txt)
                 # book_appendix = ""
             #
-            book_txt = book_txt[max(contents_end_index, preface_end_index):appendix_start_index]
+            book_txt = book_txt[max(book_publisher_notes_end_index, contents_end_index, preface_end_index):appendix_start_index]
             #
             if book_txt.find('LIST OF ILLUSTRATIONS') != -1:
                 illustrations_start_index = book_txt.find('LIST OF ILLUSTRATIONS')
                 illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
                 book_txt = book_txt[illustrations_end_index:]
-            if book_contents in book_publisher_notes:
+            if book_contents and book_contents in book_publisher_notes:
                 book_publisher_notes = ""
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents = book_contents.replace('\n\n\n', '\n').replace('\n\n', '\n').replace('_', '').replace('  ', ' ').replace('--', '-')
