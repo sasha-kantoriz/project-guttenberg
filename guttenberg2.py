@@ -489,7 +489,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 book_txt = re.sub(_pattern, '', book_txt)
             produced_by_search = re.search(r'Produced(\s+)?by(\s+)?(.+?)?(\s+)?(.+?)?(\r\n){2}', book_txt[:int(len(book_txt) * 0.05)], re.IGNORECASE|re.DOTALL)
             if produced_by_search:
-                book_txt = book_txt.replace(produced_by_search.group(0), '')
+                book_txt = book_txt.replace(produced_by_search.group(0), '', )
             transcriber_notes_patterns = [
                 re.compile(r'(\[)?(\+)?(-{3,}\+)?(\s+)?(\|)?Transcriber(\'s|’s)?(\s+)?Note(s)?(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
