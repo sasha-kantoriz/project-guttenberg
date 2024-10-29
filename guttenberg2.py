@@ -513,7 +513,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 book_publisher_notes_end_index = 0
             book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
             # BOOK CONTENTS
-            contents_search = re.search(r"(content|contents|contents of volume i|chapters|file numbers)(:)?(\.)?(\n){2}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
+            contents_search = re.search(r"(content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(\n){2}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
             if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n\n')
@@ -607,7 +607,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                         run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt
                     )
                 #
-                if not (interior_only or cover_only or word_only):
+                if 24 <= pages_num <= 828 and not (interior_only or cover_only or word_only):
                     keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) that accurately reflect the main themes and genre of the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
                     keywords_completion = client.chat.completions.create(
                         model="gpt-4o-mini",
