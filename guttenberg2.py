@@ -567,8 +567,9 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             #
             book_txt = book_txt[max(book_publisher_notes_end_index, contents_end_index, preface_end_index):appendix_start_index]
             #
-            if book_txt.find('LIST OF ILLUSTRATIONS') != -1:
-                illustrations_start_index = book_txt.find('LIST OF ILLUSTRATIONS')
+            illustration_list_search = re.search(r'(LIST OF ILLUSTRATIONS|Illustrations of Vol|Illustrations to Vol)', book_txt, re.IGNORECASE)
+            if illustration_list_search:
+                illustrations_start_index = illustration_list_search.start()
                 illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
                 book_txt = book_txt[illustrations_end_index:]
             if book_contents and book_contents in book_publisher_notes:
