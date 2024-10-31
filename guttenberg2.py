@@ -23,6 +23,8 @@ import re
 import sys
 import argparse
 import pathlib
+from sys import flags
+
 import requests
 import fpdf
 import docx
@@ -572,6 +574,8 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             if book_contents and book_contents in book_publisher_notes:
                 book_publisher_notes = ""
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+            book_contents = re.sub(r'\s{3,}\d+', '', book_contents)
+            book_contents = re.sub(r'page(s)?\n', '', book_contents, flags=re.IGNORECASE)
             book_contents = book_contents.replace('\n\n\n', '\n').replace('\n\n', '\n').replace('_', '').replace('  ', ' ').replace('--', '-')
             book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_txt = book_txt.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
