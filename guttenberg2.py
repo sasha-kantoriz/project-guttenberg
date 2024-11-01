@@ -453,7 +453,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_txt = response.content.decode('utf-8')
             #
             book_author = re.search(r"(Author|Editor): (.*)\n", book_txt, re.IGNORECASE)
-            book_author = book_author.groups()[0] if book_author else ""
+            book_author = book_author.groups()[1] if book_author else ""
             book_author = book_author.strip().replace('\\', '-').replace('/', '-').replace('&', ' and ')
             book_language = re.search(r"Language: (.*)\n", book_txt, re.IGNORECASE)
             book_language = book_language.groups()[0] if book_language else ""
