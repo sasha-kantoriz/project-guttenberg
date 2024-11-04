@@ -494,6 +494,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 book_txt = book_txt.replace(produced_by_search.group(0), '', )
             transcriber_notes_patterns = [
                 re.compile(r'(\[)?(\+)?(-{3,}\+)?(\s+)?(\|)?Transcriber(\'s|’s)?(\s+)?Note(s)?(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'Notes de transcription:(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[Note(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
             ]
@@ -582,7 +583,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             for book_contents_line in book_contents.split('\n'):
                 if book_contents_line and not re.search(r'^(chapter|part|volume)', book_contents_line, re.IGNORECASE):
                     book_contents_cleaned += re.sub(r'([IVX]+|\d+)?(\.)?(\s+)?(.+?)(,)?\s+(\d+|[ivx]+(\.)?)$', r'\1\2\3 \4', book_contents_line, flags=re.IGNORECASE|re.DOTALL) + '\n'
-                else:
+                elif book_contents_line:
                     book_contents_cleaned += book_contents_line + '\n'
             book_contents = book_contents_header + book_contents_cleaned.replace('_', '').replace('  ', ' ').replace('--', '-')
             book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
