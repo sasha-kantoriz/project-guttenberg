@@ -578,10 +578,11 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents_header_search = re.search(r"(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|contents|content|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n{1,})?", book_contents, flags=re.DOTALL | re.IGNORECASE)
             book_contents_header = book_contents_header_search.group() if book_contents_header_search else ''
+            book_contents = re.sub(r'page(s)?(\n)?', '', book_contents, flags=re.IGNORECASE)
             book_contents = book_contents.replace(book_contents_header, '').replace('\n\n\n', '\n').replace('\n\n', '\n')
             book_contents_cleaned = ""
             for book_contents_line in book_contents.split('\n'):
-                if book_contents_line and not re.search(r'^(chapter|part|volume)', book_contents_line, re.IGNORECASE):
+                if book_contents_line and not re.search(r'^((\s+)?chapter|part|volume)', book_contents_line, re.IGNORECASE):
                     book_contents_cleaned += re.sub(r'([IVX]+|\d+)?(\.)?(\s+)?(.+?)(,)?\s+(\d+|[ivx]+(\.)?)$', r'\1\2\3 \4', book_contents_line, flags=re.IGNORECASE|re.DOTALL) + '\n'
                 elif book_contents_line:
                     book_contents_cleaned += book_contents_line + '\n'
