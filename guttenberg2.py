@@ -570,7 +570,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             #
             illustration_list_search = re.search(r'(LIST OF ILLUSTRATIONS|Illustrations of Vol|Illustrations to Vol|ILLUSTRATIONS\.)', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
             if illustration_list_search:
-                illustrations_start_index = int(len(book_txt) * 0.15) + illustration_list_search.start()
+                illustrations_start_index = illustration_list_search.start()
                 illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
                 book_txt = book_txt[illustrations_end_index:]
             if book_contents and book_contents in book_publisher_notes:
