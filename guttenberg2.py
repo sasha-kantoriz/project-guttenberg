@@ -206,7 +206,7 @@ def get_previous_last_index():
         return 1
 
 
-def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, interior_only=False, cover_only=False, word_only=False):
+def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, include_publisher_notes=True, interior_only=False, cover_only=False, word_only=False):
     interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
@@ -229,7 +229,8 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         padding_top = (228.6 - 24 * (lines_num)) / 2
     pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
     # PUBLISHER NOTES
-    if notes:
+    if notes and include_publisher_notes:
+        pdf.add_page()
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
         pdf.multi_cell(w=0, h=4, align='J', padding=8, text=notes)
@@ -452,16 +453,16 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             #
             book_txt = response.content.decode('utf-8')
             #
-            book_author = re.search(r"(Author|Editor): (.*)\n", book_txt, re.IGNORECASE)
+            book_author = re.search(r"(Author|Editor): (.*)\r\n", book_txt, re.IGNORECASE)
             book_author = book_author.groups()[1] if book_author else ""
             book_author = book_author.strip().replace('\\', '-').replace('/', '-').replace('&', ' and ')
-            book_language = re.search(r"Language: (.*)\n", book_txt, re.IGNORECASE)
+            book_language = re.search(r"Language: (.*)\r\n", book_txt, re.IGNORECASE)
             book_language = book_language.groups()[0] if book_language else ""
-            book_translator = re.search(r"Translator: (.*)\n", book_txt, re.IGNORECASE)
+            book_translator = re.search(r"Translator: (.*)\r\n", book_txt, re.IGNORECASE)
             book_translator = book_translator.groups()[0] if book_translator else ""
-            book_illustrator = re.search(r"Illustrator: (.*)\n", book_txt, re.IGNORECASE)
+            book_illustrator = re.search(r"Illustrator: (.*)\r\n", book_txt, re.IGNORECASE)
             book_illustrator = book_illustrator.groups()[0] if book_illustrator else ""
-            book_title = re.search(r"Title: (.*)\n", book_txt)
+            book_title = re.search(r"Title: (.*)\r\n", book_txt)
             book_title = book_title.groups()[0] if book_title else ""
             book_title = book_title.strip().replace('\\', '-').replace('/', '-').replace('&', ' and ')
             book_content_start_index = re.search(r"\*\*\* START OF THE PROJECT GUTENBERG .* \*\*\*", book_txt, re.IGNORECASE)
@@ -470,7 +471,22 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
-            if "hungarian" in book_language.lower() or "romanian" in book_language.lower() or "esperanto" in book_language.lower() or "latin" in book_language.lower() or "greek" in book_language.lower() or "tagalog" in book_language.lower() or "japanese" in book_language.lower() or "slovenian" in book_language.lower() or "telugu" in book_language.lower() or "Gaelic, Scottish" in book_language.lower() or "French, Dutch" in book_language.lower() or "English, Spanish" in book_language.lower() or "ojibwa" in book_language.lower() or not book_author or book_translator or book_illustrator:
+            if "hungarian" in book_language.lower() or \
+               "romanian" in book_language.lower() or \
+               "esperanto" in book_language.lower() or \
+               "latin" in book_language.lower() or \
+               "greek" in book_language.lower() or \
+               "tagalog" in book_language.lower() or \
+               "japanese" in book_language.lower() or \
+               "slovenian" in book_language.lower() or \
+               "telugu" in book_language.lower() or \
+               "gaelic, scottish" in book_language.lower() or \
+               "french, dutch" in book_language.lower() or \
+               "english, spanish" in book_language.lower() or \
+               "ojibwa" in book_language.lower() or \
+               "english, french" in book_language.lower() or \
+               "chinese" in book_language.lower() or \
+               not book_author or book_translator or book_illustrator:
                 continue
             #
             illustrations_patterns = [
@@ -515,6 +531,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             else:
                 book_publisher_notes_end_index = 0
             book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
+            include_publisher_notes = book_language.lower() not in ['english']
             # BOOK CONTENTS
             contents_search = re.search(r"(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){2}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
             if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
@@ -557,7 +574,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                     preface_end_index = 0
                     book_preface = ""
             # BOOK INDEX
-            appendix_search = re.search(r'(_)?(Index|Appendix)(\.)?(:)?(_)?(\n){2}', book_txt[int(len(book_txt) * 0.8):], re.IGNORECASE)
+            appendix_search = re.search(r'(_)?(Index)(\.)?(:)?(_)?(\n){2}', book_txt[int(len(book_txt) * 0.8):], re.IGNORECASE)
             if appendix_search:
                 appendix_start_index = int(len(book_txt) * 0.8) + appendix_search.start()
                 # appendix_end_index = appendix_start_index + len(appendix_search.group()) + 10 + book_txt[appendix_start_index + len(appendix_search.group()) + 10:].find('\n\n\n\n')
@@ -568,7 +585,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             #
             book_txt = book_txt[max(book_publisher_notes_end_index, contents_end_index, preface_end_index):appendix_start_index]
             #
-            illustration_list_search = re.search(r'(LIST OF ILLUSTRATIONS|Illustrations of Vol|Illustrations to Vol|ILLUSTRATIONS\.)', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
+            illustration_list_search = re.search(r'(LIST OF ILLUSTRATIONS|List [Oo]f [iI]llustrations|ILLUSTRATIONS OF VOLUME|Illustrations [Oo]f [Vv]olume|ILLUSTRATIONS TO VOLUME|Illustrations [Tt]o [Vv]olume|ILLUSTRATIONS OF VOL|Illustrations [Oo]f [Vv]ol|Illustrations [Tt]o [Vv]ol|ILLUSTRATIONS|Illustrations)(\.)?', book_txt[:int(len(book_txt) * 0.15)])
             if illustration_list_search:
                 illustrations_start_index = illustration_list_search.start()
                 illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
@@ -614,7 +631,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ############################################################################################################
             try:
                 book_fname, cover_fname, front_cover_image_fname, pages_num = generate_book_pdfs(
-                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, interior_only,cover_only, word_only
+                    run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt, include_publisher_notes, interior_only,cover_only, word_only
                 )
                 if (24 <= pages_num <= 828) and (not (cover_only or interior_only) or word_only):
                     generate_book_docx(
