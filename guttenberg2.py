@@ -228,9 +228,9 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
     else:
         padding_top = (228.6 - 24 * (lines_num)) / 2
     pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
+    pdf.add_page()
     # PUBLISHER NOTES
     if notes and include_publisher_notes:
-        pdf.add_page()
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=10)
         pdf.multi_cell(w=0, h=4, align='J', padding=8, text=notes)
