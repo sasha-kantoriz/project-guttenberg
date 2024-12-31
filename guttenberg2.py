@@ -509,7 +509,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             if produced_by_search:
                 book_txt = book_txt.replace(produced_by_search.group(0), '', )
             transcriber_notes_patterns = [
-                re.compile(r'(\[)?(\+)?(-{3,}\+)?(\s+)?(\|)?Transcriber(\'s|’s)?(\s+)?Note(s)?(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
+                re.compile(r'(\[)?(\+)?(-{3,}(\+)?)?(\s+)?(\|)?Transcriber(\'s|’s)?(\s+)?Note(s)?(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'Notes de transcription:(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[Sidenote(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'\[Note(s)?(\s+)?:(\s+)?(.+?)?(\r\n){2}', re.IGNORECASE|re.DOTALL),
@@ -525,7 +525,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             #
             book_txt = book_txt.replace('\r\n', '\n')
             # BOOK PUBLISHER NOTES
-            book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n\n')
+            book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:int(len(book_txt)*0.02)].find('\n\n\n\n')
             if book_publisher_notes_end_index != -1:
                 book_publisher_notes_end_index += 100
             else:
@@ -533,7 +533,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
             include_publisher_notes = book_language.lower() not in ['english']
             # BOOK CONTENTS
-            contents_search = re.search(r"(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){3}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
+            contents_search = re.search(r"\s+(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){3}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
             if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                 contents_start_index = contents_search.start()
                 contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n\n')
@@ -551,14 +551,14 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             # check if sections are separated by 3 newlines
             if book_publisher_notes_end_index == contents_end_index == preface_end_index:
                 # BOOK PUBLISHER NOTES
-                book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:].find('\n\n\n')
+                book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:int(len(book_txt)*0.02)].rfind('\n\n\n')
                 if book_publisher_notes_end_index != -1:
                     book_publisher_notes_end_index += 100
                 else:
                     book_publisher_notes_end_index = 0
                 book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
                 # BOOK CONTENTS
-                contents_search = re.search(r"(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){2}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
+                contents_search = re.search(r"\s+(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){2}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
                 if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
                     contents_start_index = contents_search.start()
                     contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
