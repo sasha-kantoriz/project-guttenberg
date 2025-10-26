@@ -155,7 +155,7 @@ def search_wikidata(author_name):
             if 'search' in data and len(data['search']) > 0:
                 author_id = data['search'][0]['id']
                 author_url = f"https://www.wikidata.org/wiki/Special:EntityData/{author_id}.json"
-                author_response = requests.get(author_url)
+                author_response = requests.get(author_url, headers=headers)
                 if author_response.status_code == 200:
                     author_data = author_response.json()
                     entities = author_data.get('entities', {})
