@@ -23,7 +23,7 @@ import re
 import sys
 import argparse
 import pathlib
-from sys import flags
+import traceback
 
 import requests
 import fpdf
@@ -89,15 +89,16 @@ def search_open_library(title, author_name):
 def search_wikipedia_author(author_name):
     try:
         search_url = "https://en.wikipedia.org/w/api.php"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'}
         search_params = {'action': 'query', 'format': 'json', 'list': 'search', 'srsearch': author_name}
-        response = requests.get(search_url, params=search_params)
+        response = requests.get(search_url, headers=headers, params=search_params)
         data = response.json()
 
         if 'query' in data and 'search' in data['query'] and data['query']['search']:
             page_title = data['query']['search'][0]['title']
             content_url = f"https://en.wikipedia.org/w/api.php"
             content_params = {"action": "parse", "format": "json", "page": page_title}
-            response = requests.get(content_url, params=content_params)
+            response = requests.get(content_url, headers=headers, params=content_params)
             data = response.json()
             page_text = data['parse']['text']['*']
 
@@ -146,9 +147,9 @@ def search_google_books(title, author_name, retries=3):
 def search_wikidata(author_name):
     base_url = 'https://www.wikidata.org/w/api.php'
     params = {'action': 'wbsearchentities', 'format': 'json', 'language': 'en', 'search': author_name, 'type': 'item'}
-
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'}
     try:
-        response = requests.get(base_url, params=params)
+        response = requests.get(base_url, params=params, headers=headers)
         if response.status_code == 200:
             data = response.json()
             if 'search' in data and len(data['search']) > 0:
@@ -206,6 +207,48 @@ def get_previous_last_index():
         return 1
 
 
+def format_contents_with_openai(book_contents):
+    """
+    Formats the raw contents section using OpenAI API.
+
+    Args:
+        raw_contents (str): The unformatted "Contents" section.
+
+    Returns:
+        str: The formatted "Contents" section.
+    """
+    prompt = f"""
+    The following text is a raw Contents section from a book. Please format it into a clean and structured "Contents" section while adhering to these guidelines:
+    1. Retain the original Roman numerals for chapter numeration, if present.
+    2. Remove all page numbers from the text.
+    3. Align chapters to the left, without identation
+    4. Ensure consistent spacing and alignment for all lines.
+    5. Preserve the order and structure of the titles as they appear in the raw input.
+    6. If the word "Index" appears at the end of the "Contents" section, remove it entirely.
+    7. Do not add "" at the beginning and end of the formatted section
+
+    Here is the raw input:
+    {book_contents}
+
+    Please return the formatted Contents section.
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant for formatting a Contents section text from a book."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0  # For consistent formatting
+        )
+        book_contents = response.choices[0].message.content
+        #print(response)
+
+    except Exception as e:
+        print(f"Error formatting contents with OpenAI API: {e}")
+
+    return book_contents  # Return raw contents if API call fails
+
 def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, include_publisher_notes=True, interior_only=False, cover_only=False, word_only=False):
     interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
@@ -217,6 +260,7 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         f"{folder}/imgs/{_id}.png",
         f"{folder}/imgs/{_id}.webp"
     )
+    #print ("Contents passed to function pdf creation",contents)
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
     # TITLE
@@ -232,21 +276,21 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
     # PUBLISHER NOTES
     if notes and include_publisher_notes:
         pdf.add_page()
-        pdf.set_font("dejavu-sans", size=10)
+        pdf.set_font("dejavu-sans", size=9)
         pdf.multi_cell(w=0, h=4, align='J', padding=8, text=notes)
     # CONTENTS
     if contents:
         pdf.add_page()
-        pdf.set_font("dejavu-sans", size=10)
+        pdf.set_font("dejavu-sans", size=9)
         pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=contents)
     # PREFACE
     if preface:
         pdf.add_page()
-        pdf.set_font("dejavu-sans", size=10)
+        pdf.set_font("dejavu-sans", size=9)
         pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=preface)
     # TEXT
     pdf.add_page()
-    pdf.set_font("dejavu-sans", size=10)
+    pdf.set_font("dejavu-sans", size=9)
     pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=text)
     #
     pages = pdf.page_no()
@@ -369,7 +413,7 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
         preface_run = preface_paragraph.add_run(book_publisher_notes)
         preface_font = preface_run.font
         preface_font.name = 'Verdana'
-        preface_font.size = docx.shared.Pt(10)
+        preface_font.size = docx.shared.Pt(9)
         doc.add_page_break()
     if preface:
         preface_paragraph = doc.add_paragraph()
@@ -377,7 +421,7 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
         preface_run = preface_paragraph.add_run(preface)
         preface_font = preface_run.font
         preface_font.name = 'Verdana'
-        preface_font.size = docx.shared.Pt(10)
+        preface_font.size = docx.shared.Pt(9)
         doc.add_page_break()
     if contents:
         contents_paragraph = doc.add_paragraph()
@@ -385,14 +429,14 @@ def generate_book_docx(folder, _id, title, author, description, book_publisher_n
         contents_run = contents_paragraph.add_run(contents)
         contents_font = contents_run.font
         contents_font.name = 'Verdana'
-        contents_font.size = docx.shared.Pt(10)
+        contents_font.size = docx.shared.Pt(9)
         doc.add_page_break()
     text_paragraph = doc.add_paragraph()
     text_paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY_LOW
     text_run = text_paragraph.add_run(text)
     text_font = text_run.font
     text_font.name = 'Verdana'
-    text_font.size = docx.shared.Pt(10)
+    text_font.size = docx.shared.Pt(9)
     doc.save(f"{folder}/word/{_id}_paperback_interior.docx")
 
 
@@ -442,9 +486,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             response = requests.get(
                 book_url,
                 timeout=60,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'
-                }
+                headers={'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'}
             )
             #
             if response.status_code != 200:
@@ -471,22 +513,25 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
             #
-            if "hungarian" in book_language.lower() or \
-               "romanian" in book_language.lower() or \
-               "esperanto" in book_language.lower() or \
-               "latin" in book_language.lower() or \
-               "greek" in book_language.lower() or \
-               "tagalog" in book_language.lower() or \
-               "japanese" in book_language.lower() or \
-               "slovenian" in book_language.lower() or \
-               "telugu" in book_language.lower() or \
-               "gaelic, scottish" in book_language.lower() or \
-               "french, dutch" in book_language.lower() or \
-               "english, spanish" in book_language.lower() or \
-               "ojibwa" in book_language.lower() or \
-               "english, french" in book_language.lower() or \
-               "chinese" in book_language.lower() or \
-               not book_author or book_translator or book_illustrator:
+            #if "hungarian" in book_language.lower() or \
+            #   "romanian" in book_language.lower() or \
+            #   "esperanto" in book_language.lower() or \
+            #   "latin" in book_language.lower() or \
+            #   "greek" in book_language.lower() or \
+            #   "tagalog" in book_language.lower() or \
+            #   "japanese" in book_language.lower() or \
+            #  "slovenian" in book_language.lower() or \
+            #   "telugu" in book_language.lower() or \
+            #   "gaelic, scottish" in book_language.lower() or \
+            #   "french, dutch" in book_language.lower() or \
+            #   "english, spanish" in book_language.lower() or \
+            #   "ojibwa" in book_language.lower() or \
+            #   "english, french" in book_language.lower() or \
+            #   "chinese" in book_language.lower() or \
+
+            # For Only english, excluding title keywords, no translator or illustrator
+
+            if not "english" in book_language.lower() or "illustrations" in book_title.lower() or "pictures" in book_title.lower() or not book_author or book_translator or book_illustrator:
                 continue
             #
             illustrations_patterns = [
@@ -590,6 +635,11 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 illustrations_start_index = illustration_list_search.start()
                 illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
                 book_txt = book_txt[illustrations_end_index:]
+            plates_list_search = re.search(r'(LIST OF PLATES|List [Oo]f [pP]lates|PLATES OF VOLUME|Plates [Oo]f [Vv]olume)(\.)?', book_txt[:int(len(book_txt) * 0.15)])
+            if plates_list_search:
+                plates_start_index = plates_list_search.start()
+                plates_end_index = plates_start_index + book_txt[plates_start_index:].find('\n\n\n\n')
+                book_txt = book_txt[plates_end_index:]
             if book_contents and book_contents in book_publisher_notes:
                 book_publisher_notes = ""
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
@@ -625,6 +675,17 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 ]
             )
             description = description_completion.choices[0].message.content
+
+            ############################################################################################################
+            # Book Contents Formatting with OpenAI API
+            ############################################################################################################
+
+            if book_contents:
+                book_contents = format_contents_with_openai(book_contents)
+            else:
+                print("Warning: No 'Contents' section found for this book.")
+
+            #print ("Contents processed in get books function:",book_contents)
 
             ############################################################################################################
             # Book files Generation
