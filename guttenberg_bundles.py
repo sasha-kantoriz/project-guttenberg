@@ -263,7 +263,7 @@ def parse_raw_book(text):
             preface_end_index = 0
             book_preface = ""
     # BOOK INDEX
-    appendix_search = re.search(r'(_)?(Index)(\.)?(:)?(_)?(\n){2}', text[int(len(text) * 0.8):], re.IGNORECASE)
+    appendix_search = re.search(r'(_)?(Index|Index\s+to\s+Letters)(\.)?(:)?(_)?(\n){2}', text[int(len(text) * 0.8):], re.IGNORECASE)
     if appendix_search:
         appendix_start_index = int(len(text) * 0.8) + appendix_search.start()
         # appendix_end_index = appendix_start_index + len(appendix_search.group()) + 10 + text[appendix_start_index + len(appendix_search.group()) + 10:].find('\n\n\n\n')
@@ -396,7 +396,7 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
     # Title page
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=24)
-    bundle_title_text = f"{bundle_title}\n{author_1} & {author_2}"
+    bundle_title_text = f"{bundle_title}\n\nBy\n\n{author_1} & {author_2}"
     lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=bundle_title_text, dry_run=True, output="LINES"))
     if lines_num >= 3:
         padding_top = (228.6 - 24 * (lines_num - 1)) / 2
@@ -413,7 +413,7 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
     with TemporaryFile() as book_1_tmp:
         book_1_tmp_pdf = PDF(format=(152.4, 228.6))
         book_1_tmp_pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
-        featured_text = f"Featured books\n\n{title_1}; {author_1} — Page 4\n\n{title_2}; {author_2} — Page {write_book_pdf(book_1_tmp_pdf, title_1, author_1, language_1, text_1, notes_1, contents_1, preface_1) + 6}"
+        featured_text = f"Featured books:\n\n\n\n{title_1}; {author_1} — Page 4\n\n{title_2}; {author_2} — Page {write_book_pdf(book_1_tmp_pdf, title_1, author_1, language_1, text_1, notes_1, contents_1, preface_1) + 6}"
         book_1_tmp_pdf.output(book_1_tmp)
     lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=featured_text, dry_run=True, output="LINES"))
     if lines_num >= 3:
@@ -443,7 +443,7 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
 def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, interior_pages):
     cover_pdf_fname, dalle_cover_img_png = (
         f"{folder}/cover/{bundle_id}_paperback_cover.pdf",
-        f"{folder}/cover/{bundle_id}_paperback_cover.png"
+        f"{folder}/images/{bundle_id}_paperback_cover.png"
     )
     # Full cover
     cover_width, cover_height = 152.4 * 2 + interior_pages * 0.05720 + 3.175 * 2, 234.95
@@ -485,7 +485,7 @@ def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, int
     if include_cover_img:
         try:
             prompt = f"""Generate an image to be featured in a book cover. 
-            Exclude any depictions of books, book covers or written text. 
+            Exclude any depictions of books, book covers or written text on the output image. 
             Meeting the criteria mentioned before, the image needs to be based on the following description: {description}
             """
             img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
@@ -618,7 +618,7 @@ def main(folder, num_workers):
                             0
                         ]
                     )
-            
+
                 processed_count += 1
                 # Save progress intermittently
                 if processed_count % num_workers == 0:
@@ -649,15 +649,15 @@ def parse_args():
 if __name__ == '__main__':
     # create output folders
     run_folder = datetime.now().strftime('%Y-%B')
-    for subdir in ["interior", "cover"]:
+    for subdir in ["interior", "images", "cover"]:
         pathlib.Path(f"{run_folder}/{subdir}").mkdir(parents=True, exist_ok=True)
-    
+
     # Setup logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.getLogger('fpdf').setLevel(logging.ERROR)
     logging.getLogger('fontTools.subset').setLevel(logging.ERROR)
     # Suppress logs from fpdf.svg (for SVG-related warnings)
     logging.getLogger('fpdf.svg').propagate = False
-    
+
     args = parse_args()
     main(run_folder, args.workers)
