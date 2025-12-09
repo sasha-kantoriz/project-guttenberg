@@ -20,20 +20,21 @@ Script will create output folder named as datestamp, and also maintain last proc
 
 import os
 import re
-import sys
+import base64
 import argparse
 import pathlib
 import traceback
-
 import requests
 import fpdf
 import docx
+import jinja2
 import openpyxl
+import weasyprint
 from time import sleep
 from datetime import datetime
-from random import randint
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from fpdf.enums import XPos, YPos
 from PIL import Image
 from pdf2image import convert_from_path
 from bs4 import BeautifulSoup
@@ -82,6 +83,7 @@ def search_open_library(title, author_name):
             print(f"Failed to fetch Open Library data for {title} by {author_name}")
     except Exception as e:
         print(f"Error fetching data for {title} by {author_name} from Open Library: {e}")
+        print(traceback.format_exc())
 
     return {'open_library_publication_year': 'N/A', 'open_library_death_year': 'N/A'}
 
@@ -110,6 +112,7 @@ def search_wikipedia_author(author_name):
 
     except Exception as e:
         print(f"Error fetching data for {author_name} from Wikipedia: {e}")
+        print(traceback.format_exc())
 
     return 'N/A'
 
@@ -139,6 +142,7 @@ def search_google_books(title, author_name, retries=3):
                 sleep(1)
         except Exception as e:
             print(f"Error fetching data for {title} by {author_name} from Google Books: {e}")
+            print(traceback.format_exc())
 
     print(f"Failed to fetch data for {title} by {author_name} after {retries} attempts")
     return {'google_books_publication_year': 'N/A'}
@@ -171,6 +175,7 @@ def search_wikidata(author_name):
             print(f"Failed to fetch Wikidata data for {author_name}")
     except Exception as e:
         print(f"Error fetching data for {author_name} from Wikidata: {e}")
+        print(traceback.format_exc())
 
     return 'N/A'
 
@@ -180,10 +185,9 @@ class PDF(fpdf.FPDF):
         if self.page_no() != 1:
             # Go to 1.5 cm from bottom
             self.set_y(-15)
-            self.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
             self.set_font("dejavu-sans", size=8)
             # Print centered page number
-            self.cell(0, 10, f"{self.page_no()}", 0, 0, 'C')
+            self.cell(w=0, h=10, text=f"{self.page_no()}", border=0, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
 
 def get_latest_published_book_index():
@@ -246,11 +250,12 @@ def format_contents_with_openai(book_contents):
 
     except Exception as e:
         print(f"Error formatting contents with OpenAI API: {e}")
+        print(traceback.format_exc())
 
     return book_contents  # Return raw contents if API call fails
 
 def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, include_publisher_notes=True, interior_only=False, cover_only=False, word_only=False):
-    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp = (
+    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp, logo_path = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
         f"{folder}/front_cover//{_id}.pdf",
@@ -258,11 +263,12 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         f"{folder}/front_cover/{_id}_square.webp",
         f"{folder}/front_cover/{_id}.png",
         f"{folder}/imgs/{_id}.png",
-        f"{folder}/imgs/{_id}.webp"
+        f"{folder}/imgs/{_id}.webp",
+        os.path.join(os.path.dirname(__file__), f"assets/logo.png")
     )
-    #print ("Contents passed to function pdf creation",contents)
     pdf = PDF(format=(152.4, 228.6))
     pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
+
     # TITLE
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=24)
@@ -273,29 +279,35 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         padding_top = (228.6 - 24 * (lines_num)) / 2
     pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=f"{title}\n\n{author}")
     pdf.add_page()
+
     # PUBLISHER NOTES
     if notes and include_publisher_notes:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=9)
         pdf.multi_cell(w=0, h=4, align='J', padding=8, text=notes)
+
     # CONTENTS
     if contents:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=9)
         pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=contents)
+
     # PREFACE
     if preface:
         pdf.add_page()
         pdf.set_font("dejavu-sans", size=9)
         pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=preface)
+
     # TEXT
     pdf.add_page()
     pdf.set_font("dejavu-sans", size=9)
     pdf.multi_cell(w=0, h=4.4, align='J', padding=8, text=text)
+
     #
     pages = pdf.page_no()
     if 24 <= pages <= 828 and not cover_only and not word_only:
         pdf.output(interior_pdf_fname)
+
     # COVERS
     if 24 <= pages <= 828 and not (word_only or interior_only):
         # FRONT COVER
@@ -308,21 +320,43 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         pdf.set_font('dejavu-sans', size=18)
         text_h = pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n* * *\n{author}\n", dry_run=True, output="HEIGHT")
         pdf.multi_cell(w=0, align='C', padding=6.35, text=f"\n\n{title}\n\n* * *\n\n{author}\n")
+
         # COVER IMAGE
-        include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 10)
+        include_cover_img = (text_h + 8) < 234.95 - ((234.95 - 40) / 2 + 5)
         #
         if include_cover_img:
             try:
-                prompt = f"Generate an image to be featured in a book cover. Exclude any depictions of books, book covers or written text. Meeting the criteria mentioned before, the image needs to be based on the following description: {description}"
-                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
+                prompt = f"""Generate cover image in a classical styles for:
+                ```
+                {description}
+                ```
+                Create only a standalone image. Do NOT write any text.
+                """
+                img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, size="1024x1024").data[0].url
                 response = requests.get(img_url)
                 with open(dalle_cover_img_png, 'wb') as img:
                     img.write(response.content)
-                pdf.image(dalle_cover_img_png, x=(152.4 - 100 + 6.35) / 2,
-                          y=(234.95 - 40) / 2 + 20, w=100, h=100)
+
+                img_w, img_h = 100, 100
+                img_x, img_y = (152.4 + 3.175 - img_w) / 2, (234.95 - 40) / 2 + 5
+                pdf.image(
+                    dalle_cover_img_png,
+                    x=img_x, y=img_y, w=img_w, h=img_h
+                )
+
+                # logo
+                col_width = 152.4 + 3.175
+                logo_w, logo_h = 30, 15
+                logo_x, logo_y = (col_width - logo_w) / 2, 234.95 - 20
+                pdf.image(
+                    "./assets/logo.png",
+                    x=logo_x, y=logo_y, w=logo_w, h=logo_h
+                )
             except:
-                pass
+                print(traceback.format_exc())
+
         pdf.output(front_cover_pdf_fname)
+
         try:
             front_cover_pages = convert_from_path(front_cover_pdf_fname)
             front_cover_pages[0].save(front_cover_image_tmp_fname, "PNG")
@@ -338,57 +372,82 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
             cover_image.save(dalle_cover_img_webp, "WEBP")
             cover_image.close()
         except:
-            pass
+            print(traceback.format_exc())
+
         # Full cover
-        cover_width, cover_height = 152.4 * 2 + pages * 0.05720 + 3.175 * 2, 234.95
-        pdf = fpdf.FPDF(format=(cover_width, cover_height))
-        pdf.add_font('dejavu-sans', style="", fname="assets/DejaVuSans.ttf")
-        pdf.add_page()
-        pdf.set_fill_color(r=250,g=249,b=222)
-        pdf.rect(h=pdf.h, w=pdf.w, x=0, y=0, style="DF")
-        cols = pdf.text_columns(ncols=2, gutter=pages*0.05720 + 1.588*2, l_margin=6.35, r_margin=6.35)
+        trim_width = 152.4
+        bleed = 3.175
+        spine_width = pages * 0.05720
+        total_width = ((trim_width + bleed) * 2 + spine_width) * 2.834645669
+        total_height = 234.9
+
+        # Image Dimensions
+        cover_image_width, cover_image_height = 100, 100
+        logo_width, logo_height = 30, 15
+
+        # --- CENTERING LOGIC ---
+        front_cover_start_x = bleed + trim_width + spine_width
+        center_offset = trim_width / 2
+
+        # Cover image
+        front_image_x = front_cover_start_x + center_offset - (cover_image_width / 2)
+
+        # Right logo (Front Cover)
+        front_logo_x = front_cover_start_x + center_offset - (logo_width / 2)
+
+        # Left Logo (Back Cover)
+        left_logo_x = bleed + (trim_width - logo_width) / 2
+
+        with open('assets/cover.html') as template_file:
+            template = jinja2.Template(template_file.read())
+
+        cover_html = template.render(
+            cover_width=total_width,
+            cover_height=total_height,
+            spine_width=spine_width,
+
+            # Right Column (Front cover)
+            front_cover_start_x=front_cover_start_x,
+            front_cover_trim_width=trim_width,
+
+            # Left Column (Back Cover)
+            back_cover_width=trim_width + bleed,
+
+            # Content
+            book_title=title,
+            title_font_size=24,
+            book_author=author,
+            author_font_size=16,
+            book_title_separator="* * *",
+            separator_font_size=16,
+            book_description="<p>" + "</p><p>".join(description.split("\n")) + "</p>",
+            description_font_size=12,
+
+            # Image
+            book_cover_image_fname=pathlib.Path(dalle_cover_img_png).as_uri(),
+            cover_image_x=front_image_x,
+            cover_image_y=(total_height - 60) / 2 + 5,
+            cover_image_width=cover_image_width,
+            cover_image_height=cover_image_height,
+
+            # Logos
+            logo_path=pathlib.Path(logo_path).as_uri(),
+            logo_width=logo_width,
+            logo_height=logo_height,
+            logo_y=10,
+            right_logo_x=front_logo_x,
+            left_logo_x=left_logo_x,
+        )
+        weasyprint.HTML(string=cover_html).write_pdf(cover_pdf_fname)
+
         #
-        description_p = cols.paragraph(text_align='L')
-        pdf.set_font('dejavu-sans', size=12)
-        description_lines = pdf.multi_cell(w=152.4, align='L', padding=(0, 11.175), text=description, dry_run=True, output="LINES")
-        description_p.write('\n'.join(description_lines))
-        cols.end_paragraph()
-        #
-        cols.new_column()
-        #
-        title_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=24)
-        title_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n\n{title}", dry_run=True, output="HEIGHT")
-        title_p.write(f"\n\n{title}")
-        cols.end_paragraph()
-        #
-        separator_text = "\n* * *"
-        separator_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=16)
-        separator_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=separator_text, dry_run=True, output="HEIGHT")
-        separator_p.write(separator_text)
-        cols.end_paragraph()
-        #
-        author_p = cols.paragraph(text_align='C')
-        pdf.set_font('dejavu-sans', size=16)
-        author_h = pdf.multi_cell(w=0, align='C', padding=(0, 8), text=f"\n{author}\n", dry_run=True, output="HEIGHT")
-        author_p.write(f"\n{author}")
-        cols.end_paragraph()
-        #
-        if include_cover_img:
-            try:
-                pdf.image(dalle_cover_img_png, x=(152.4 + pages * 0.05720 + 3.175) + (152.4 - 100 - 6.35) / 2 + 5, y=(234.95 - 40) / 2, w=100, h=100)
-            except:
-                pass
-        #
-        cols.render()
-        pdf.output(cover_pdf_fname)
         try:
             os.remove(front_cover_pdf_fname)
             os.remove(front_cover_image_tmp_fname)
             os.remove(dalle_cover_img_png)
         except:
-            pass
+            print(traceback.format_exc())
+
     #
     return (
         interior_pdf_fname,
@@ -488,12 +547,15 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 timeout=60,
                 headers={'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)'}
             )
+
             #
             if response.status_code != 200:
                 print(f"Error fetching book text: {response.status_code}")
                 continue
+
             #
             book_txt = response.content.decode('utf-8')
+
             #
             book_author = re.search(r"(Author|Editor): (.*)\r\n", book_txt, re.IGNORECASE)
             book_author = book_author.groups()[1] if book_author else ""
@@ -512,6 +574,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             book_content_end_index = re.search(r"\*\*\* END OF THE PROJECT GUTENBERG .* \*\*\*", book_txt, re.IGNORECASE)
             book_content_end_index = book_content_end_index.start() if book_content_end_index else -1
             book_txt = book_txt[book_content_start_index:book_content_end_index]
+
             #
             #if "hungarian" in book_language.lower() or \
             #   "romanian" in book_language.lower() or \
@@ -533,6 +596,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
 
             if not "english" in book_language.lower() or "illustrations" in book_title.lower() or "pictures" in book_title.lower() or not book_author or book_translator or book_illustrator:
                 continue
+
             #
             illustrations_patterns = [
                 re.compile(r'\[(\s+)?Cover Illustration](\r\n){2}', re.IGNORECASE|re.DOTALL),
@@ -543,6 +607,8 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ]
             for _pattern in illustrations_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
+
+            #
             proofread_patterns = [
                 re.compile(r'Produced(.+?)?(\s+)?at(\s+)?(https://|http://)?(www\.)?pgdp\.net(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'Produced(.+?)?(\s+)?by(\s+)?(www\.)?ebooksgratuits\.com(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
@@ -550,9 +616,13 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ]
             for _pattern in proofread_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
+
+            #
             produced_by_search = re.search(r'Produced(\s+)?by(\s+)?(.+?)?(\s+)?(.+?)?(\r\n){2}', book_txt[:int(len(book_txt) * 0.05)], re.IGNORECASE|re.DOTALL)
             if produced_by_search:
                 book_txt = book_txt.replace(produced_by_search.group(0), '', )
+
+            #
             transcriber_notes_patterns = [
                 re.compile(r'(\[)?(\+)?(-{3,}(\+)?)?(\s+)?(\|)?Transcriber(\'s|’s)?(\s+)?Note(s)?(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'Notes de transcription:(\s+)?(:)?(\+)?(\s+)?(.+?)?(\r\n){3}', re.IGNORECASE|re.DOTALL),
@@ -561,14 +631,18 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ]
             for _pattern in transcriber_notes_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
+
+            #
             start_end_patterns = [
                 re.compile(r'START(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){2}', re.IGNORECASE|re.DOTALL),
                 re.compile(r'END(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){2}', re.IGNORECASE|re.DOTALL),
             ]
             for _pattern in start_end_patterns:
                 book_txt = re.sub(_pattern, '', book_txt)
+
             #
             book_txt = book_txt.replace('\r\n', '\n')
+
             # BOOK PUBLISHER NOTES
             book_publisher_notes_start_index, book_publisher_notes_end_index = 0, book_txt[100:int(len(book_txt)*0.02)].find('\n\n\n\n')
             if book_publisher_notes_end_index != -1:
@@ -577,6 +651,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 book_publisher_notes_end_index = 0
             book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
             include_publisher_notes = book_language.lower() not in ['english']
+
             # BOOK CONTENTS
             contents_search = re.search(r"\s+(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){2,}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
             if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
@@ -585,6 +660,8 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             else:
                 contents_end_index = contents_start_index = 0
             book_contents = book_txt[contents_start_index:contents_end_index]
+
+            # PREFACE
             preface_search = re.search(r'(preface|foreword|prefatory note|préface|vorwort|prólogo|prefacio|prefazione)(\.)?(\n){2}', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
             if preface_search:
                 preface_start_index = preface_search.start()
@@ -593,6 +670,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             else:
                 preface_end_index = 0
                 book_preface = ""
+
             # check if sections are separated by 3 newlines
             if book_publisher_notes_end_index == contents_end_index == preface_end_index:
                 # BOOK PUBLISHER NOTES
@@ -602,6 +680,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 else:
                     book_publisher_notes_end_index = 0
                 book_publisher_notes = book_txt[book_publisher_notes_start_index:book_publisher_notes_end_index]
+
                 # BOOK CONTENTS
                 contents_search = re.search(r"\s+(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|content|contents|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n){2,}", book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE|re.DOTALL)
                 if contents_search and not re.search(r"(content|contents|chapters|file numbers)(:)?(\.)?(\n)+(\s)*of", book_txt[:contents_search.start() + 100], re.IGNORECASE):
@@ -609,7 +688,11 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                     contents_end_index = contents_start_index + len(contents_search.group()) + 5 + book_txt[contents_start_index + len(contents_search.group()) + 5:].find('\n\n\n')
                 else:
                     contents_end_index = contents_start_index = 0
+
+                #
                 book_contents = book_txt[contents_start_index:contents_end_index]
+
+                #
                 preface_search = re.search(r'(_)?(preface|foreword|prefatory note)(\.)?(_)?(\n){2}', book_txt[:int(len(book_txt) * 0.15)], re.IGNORECASE)
                 if preface_search:
                     preface_start_index = preface_search.start()
@@ -618,6 +701,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 else:
                     preface_end_index = 0
                     book_preface = ""
+
             # BOOK INDEX
             appendix_search = re.search(r'(_)?(Index)(\.)?(:)?(_)?(\n){2}', book_txt[int(len(book_txt) * 0.8):], re.IGNORECASE)
             if appendix_search:
@@ -627,36 +711,49 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             else:
                 appendix_start_index = len(book_txt)
                 # book_appendix = ""
+
             #
             book_txt = book_txt[max(book_publisher_notes_end_index, contents_end_index, preface_end_index):appendix_start_index]
+
             #
             illustration_list_search = re.search(r'(LIST OF ILLUSTRATIONS|List [Oo]f [iI]llustrations|ILLUSTRATIONS OF VOLUME|Illustrations [Oo]f [Vv]olume|ILLUSTRATIONS TO VOLUME|Illustrations [Tt]o [Vv]olume|ILLUSTRATIONS OF VOL|Illustrations [Oo]f [Vv]ol|Illustrations [Tt]o [Vv]ol|ILLUSTRATIONS|Illustrations)(\.)?', book_txt[:int(len(book_txt) * 0.15)])
             if illustration_list_search:
                 illustrations_start_index = illustration_list_search.start()
                 illustrations_end_index = illustrations_start_index + book_txt[illustrations_start_index:].find('\n\n\n\n')
                 book_txt = book_txt[illustrations_end_index:]
+
+            #
             plates_list_search = re.search(r'(LIST OF PLATES|List [Oo]f [pP]lates|PLATES OF VOLUME|Plates [Oo]f [Vv]olume)(\.)?', book_txt[:int(len(book_txt) * 0.15)])
             if plates_list_search:
                 plates_start_index = plates_list_search.start()
                 plates_end_index = plates_start_index + book_txt[plates_start_index:].find('\n\n\n\n')
                 book_txt = book_txt[plates_end_index:]
+
+            #
             if book_contents and book_contents in book_publisher_notes:
                 book_publisher_notes = ""
+
+            #
             book_publisher_notes = book_publisher_notes.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_contents_header_search = re.search(r"(_)?(table\s+des\s+matières|contenu|liste\s+des\s+matières|contenidos|Índice|Tabla\s+de\s+contenidos|capítulos|list\s+of\s+contents|table\s+of\s+contents|contents|content|contents of volume|contents of volume [IVX]{1,3}|contents of vol|contents of vol(\.)?(\s+[IVX]{1,3})?|chapters|file numbers)(:)?(\.)?(_)?(\n{1,})?", book_contents, flags=re.DOTALL | re.IGNORECASE)
             book_contents_header = book_contents_header_search.group() if book_contents_header_search else ''
             book_contents = re.sub(r'page(s)?(\n)?', '', book_contents, flags=re.IGNORECASE)
             book_contents = book_contents.replace(book_contents_header, '').replace('\n\n\n', '\n').replace('\n\n', '\n')
+
+            #
             book_contents_cleaned = ""
             for book_contents_line in book_contents.split('\n'):
                 if book_contents_line and not re.search(r'^((\s+)?chapter|part|volume)', book_contents_line, re.IGNORECASE):
                     book_contents_cleaned += re.sub(r'([IVX]+|\d+)?(\.)?(\s+)?(.+?)(,)?\s+(\d+|[ivx]+(\.)?)$', r'\1\2\3 \4', book_contents_line, flags=re.IGNORECASE|re.DOTALL) + '\n'
                 elif book_contents_line:
                     book_contents_cleaned += book_contents_line + '\n'
+
+            #
             book_contents = book_contents_header + book_contents_cleaned.replace('_', '').replace('  ', ' ').replace('--', '-')
             book_preface = book_preface.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             book_txt = book_txt.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
             # book_appendix = book_appendix.replace('\n\n\n\n', '\n\n').replace('_', '').replace('  ', ' ').replace('--', '-').replace('\n\n', '_____').replace('\n', ' ').replace('_____', '\n\n')
+
             ############################################################################################################
             # Book Metadata
             ############################################################################################################
@@ -665,6 +762,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                 description_query += f" by Author and Writer {book_author}."
             if book_language:
                 description_query += f" Write the review in this language: {book_language}"
+
             description_completion = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -679,13 +777,10 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
             ############################################################################################################
             # Book Contents Formatting with OpenAI API
             ############################################################################################################
-
             if book_contents:
                 book_contents = format_contents_with_openai(book_contents)
             else:
                 print("Warning: No 'Contents' section found for this book.")
-
-            #print ("Contents processed in get books function:",book_contents)
 
             ############################################################################################################
             # Book files Generation
@@ -698,6 +793,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                     generate_book_docx(
                         run_folder, i, book_title, book_author, description, book_publisher_notes, book_contents, book_preface, book_txt
                     )
+
                 #
                 if 24 <= pages_num <= 828 and not (interior_only or cover_only or word_only):
                     keywords_query = f'Give me 7 keywords separated by semicolons (only the keywords, no numbers nor introductory words) that accurately reflect the main themes and genre of the classic book "{book_title}" by Author "{book_author}". Keywords must not be subjective claims about its quality, time-sensitive statments and must not include the word "book". Keywords must also not contain words included on the book the title, author nor contained on the following book description: {description}'
@@ -711,6 +807,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                         ]
                     )
                     keywords = keywords_completion.choices[0].message.content
+
                     #
                     bisac_codes_query = f'Give me up to 3 BISAC codes separated by semicolons (only the code in the official format, not its description and not numbered) for the book "{book_title}" by Author "{book_author}" with description "{description}", for its correct classification. Output format example would be: FIC019000; FIC031010; FIC014000'
                     bisac_codes_completion = client.chat.completions.create(
@@ -723,6 +820,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                         ]
                     )
                     bisac_codes = bisac_codes_completion.choices[0].message.content
+
                     #
                     """
                     published_year_query = f'Please, tell me the year the book {book_title} by {book_author} was published. Provide only the date in the format YYYY.'
@@ -749,11 +847,13 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                     )
                     author_year_of_death = author_year_of_death_completion.choices[0].message.content
                     """
+
                     # Extended Metadata
                     google_books_search_data = search_google_books(book_title, book_author)
                     open_library_search_data = search_open_library(book_title, book_author)
                     wikipedia_author_year_of_death = search_wikipedia_author(book_author)
                     wikidata_author_year_of_death = search_wikidata(book_author)
+
                     #
                     ws.append(
                         [
@@ -781,17 +881,20 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
                         ]
                     )
             except:
-                import traceback
                 print(traceback.format_exc())
+
     except KeyboardInterrupt:
         update_index_flag = False
+
     except Exception as e:
         print(e)
         update_index_flag = False
         update_last_index(i)
+
     finally:
         if not (interior_only or word_only or cover_only):
             wb.save('Project Guttenberg.xlsx')
+
         # update last published book index
         if update_index_flag:
             update_last_index(end)
@@ -819,7 +922,7 @@ def parse_args():
 
 if __name__ == '__main__':
     # create PDFs output folder
-    run_folder = datetime.now().strftime('%Y-%B')
+    run_folder = os.path.join(os.path.dirname(__file__), datetime.now().strftime('%Y-%B'))
     pathlib.Path(f"{run_folder}/imgs").mkdir(parents=True, exist_ok=True)
     pathlib.Path(f"{run_folder}/cover").mkdir(parents=True, exist_ok=True)
     pathlib.Path(f"{run_folder}/front_cover").mkdir(parents=True, exist_ok=True)
