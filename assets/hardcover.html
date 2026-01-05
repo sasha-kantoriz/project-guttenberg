@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: {{ cover_width }}pt {{ cover_height }}mm;
+            margin: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: {{ cover_width }}mm;
+            height: {{ cover_height }}mm;
+            font-family: "DejaVu Sans", sans-serif;
+            background: #aaa;
+            position: relative;
+        }
+
+        /* --- IMAGES (Absolute Positioning) --- */
+        .cover-image {
+            position: absolute;
+            left: {{ cover_image_x }}mm;
+            top: {{ cover_image_y }}mm;
+            width: {{ cover_image_width }}mm;
+            height: {{ cover_image_height }}mm;
+            z-index: 5;
+        }
+
+        .logo {
+            position: absolute;
+            width: {{ logo_width }}mm;
+            height: {{ logo_height }}mm;
+            bottom: {{ logo_y }}mm;
+            z-index: 5;
+            object-fit: contain;
+        }
+
+        /* --- TEXT CONTAINERS --- */
+        .back-cover-layer {
+            position: absolute;
+            top: 0;
+            left: 20mm;
+            width: {{ back_cover_width }}mm;
+            height: 100%;
+            box-sizing: border-box;
+            padding-top: 35mm;
+            padding-bottom: 35mm;
+            padding-left: 3.175mm;
+            padding-right: 3.175mm;
+        }
+
+        .front-cover-layer {
+            position: absolute;
+            top: 0;
+            left: {{ front_cover_start_x }}mm;
+            width: {{ front_cover_width }}mm;
+            height: 100%;
+            text-align: center;
+            box-sizing: border-box;
+            z-index: 10;
+            padding-top: 35mm;
+            padding-bottom: 35mm;
+            padding-left: 3.175mm;
+            padding-right: 3.175mm;
+        }
+        .description { font-size: {{ description_font_size }}pt; text-align: justify; }
+        .title { font-size: {{ title_font_size }}pt; font-weight: bold; margin-bottom: 5mm; }
+        .separator { font-size: {{ separator_font_size }}pt; margin-bottom: 5mm; }
+        .author { font-size: {{ author_font_size }}pt; }
+
+        /* WAVE DECORATION */
+        .wave { position: absolute; left: 0; bottom: 0; width: 100%; height: 55%; z-index: 0; }
+        .wave svg { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+    <div class="wave">
+        <svg viewBox="0 0 100 50" preserveAspectRatio="none">
+            <path d="M0,10 C30,40 70,0 100,30 L100,50 L0,50 Z" fill="#abf"/>
+        </svg>
+    </div>
+
+    <img src="{{ book_cover_image_fname }}" class="cover-image" alt="Cover Art">
+    <img src="{{ logo_path }}" class="logo" style="left: {{ left_logo_x }}mm;" alt="Left Logo">
+    <img src="{{ logo_path }}" class="logo" style="left: {{ right_logo_x }}mm;" alt="Right Logo">
+
+    <div class="back-cover-layer">
+        <div class="description">
+            {{ book_description }}
+        </div>
+    </div>
+
+    <div class="front-cover-layer">
+        <div class="title">{{ book_title }}</div>
+        <div class="separator">{{ book_title_separator }}</div>
+        <div class="author">{{ book_author }}</div>
+    </div>
+
+</body>
+</html>
