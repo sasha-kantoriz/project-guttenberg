@@ -1,8 +1,8 @@
-"""Guttenberg2.py.
+"""gutenberg.py.
 
-usage: python3 guttenberg2.py [options]
+usage: python3 gutenberg.py [options]
 
-Project Guttenberg books scrape script:
+Project Gutenberg books scrape script:
 
 options:
   -h, --help            show this help message and exit
@@ -504,7 +504,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
     datestamp = datetime.now().strftime('%Y-%B-%d %H_%M')
     if not (interior_only or cover_only or word_only):
         try:
-            wb = openpyxl.load_workbook('Project Guttenberg.xlsx')
+            wb = openpyxl.load_workbook('Project Gutenberg.xlsx')
         except:
             wb = openpyxl.Workbook()
         try:
@@ -893,7 +893,7 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
 
     finally:
         if not (interior_only or word_only or cover_only):
-            wb.save('Project Guttenberg.xlsx')
+            wb.save('Project Gutenberg.xlsx')
 
         # update last published book index
         if update_index_flag:
@@ -903,9 +903,9 @@ def get_books(run_folder, start, end, interior_only=False, cover_only=False, wor
 def parse_args():
     # parse command line arguments
     parser = argparse.ArgumentParser(
-        prog='guttenberg2.py',
+        prog='gutenberg.py',
         usage='python3 %(prog)s [options]',
-        description='Project Guttenberg books scrape script:',
+        description='Project Gutenberg books scrape script:',
         epilog="Script will create output folder named as datestamp, and also maintain last processed book index and Excel file with each run spreadsheet"
     )
     parser.add_argument('-i', '--indexes', type=str, dest='indexes', default='', help='books indexes to process, comma separated')

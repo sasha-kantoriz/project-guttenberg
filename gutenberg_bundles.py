@@ -1,8 +1,9 @@
-"""Guttenberg2.py.
+"""
+gutenberg_bundles.py.
 
-usage: python3 guttenberg2.py [options]
+usage: python3 gutenberg_bundles.py [options]
 
-Project Guttenberg books scrape script:
+Project Gutenberg books scrape script:
 
 options:
   -h, --help            show this help message and exit
@@ -76,7 +77,7 @@ def dump_current_progress(index):
         f.write(str(index))
 
 
-def fetch_guttenberg_book(index):
+def fetch_gutenberg_book(index):
     try:
         logger.debug(f"Fetching book {index}")
         book_url = f'https://www.gutenberg.org/ebooks/{index}.txt.utf-8'
@@ -193,7 +194,7 @@ def parse_raw_book(text):
     ]
     for _pattern in transcriber_notes_patterns:
         text = re.sub(_pattern, '', text)
-    # Removal of project guttenberg marks
+    # Removal of project gutenberg marks
     start_end_patterns = [
         re.compile(r'START(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){2}', re.IGNORECASE | re.DOTALL),
         re.compile(r'END(\s+)?OF(\s+)?(THE)?(\s+)?PROJECT(\s+)?GUTENBERG.+?(\r\n){2}', re.IGNORECASE | re.DOTALL),
@@ -501,7 +502,7 @@ def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, int
 
 
 def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, title_1, title_2, bundle_title, author_1, author_2, description):
-    book_1, book_2 = fetch_guttenberg_book(index_1), fetch_guttenberg_book(index_2)
+    book_1, book_2 = fetch_gutenberg_book(index_1), fetch_gutenberg_book(index_2)
     if not book_1 or not book_2:
         raise Exception(f"Failed to fetch one or both books for bundle {bundle_id} (books {index_1}, {index_2})")
 
@@ -578,7 +579,7 @@ def main(folder, num_workers):
         return
 
     try:
-        wb = openpyxl.load_workbook('Project Guttenberg Bundles.xlsx')
+        wb = openpyxl.load_workbook('Project Gutenberg Bundles.xlsx')
         ws = wb["Sheet"]
     except FileNotFoundError:
         wb = openpyxl.Workbook()
@@ -624,12 +625,12 @@ def main(folder, num_workers):
                 if processed_count % num_workers == 0:
                     current_progress = start_index + processed_count
                     logger.info(f"Saving progress. Bundles processed in this run: {processed_count}. Total progress: {current_progress}")
-                    wb.save('Project Guttenberg Bundles.xlsx')
+                    wb.save('Project Gutenberg Bundles.xlsx')
                     dump_current_progress(current_progress)
 
     # Final save and progress update
     final_progress = start_index + processed_count
-    wb.save('Project Guttenberg Bundles.xlsx')
+    wb.save('Project Gutenberg Bundles.xlsx')
     dump_current_progress(final_progress)
     logger.info(f"Finished processing. Total bundles processed in this run: {processed_count}. Final progress: {final_progress}")
 
@@ -637,9 +638,9 @@ def main(folder, num_workers):
 def parse_args():
     # parse command line arguments
     parser = argparse.ArgumentParser(
-        prog='guttenberg-bundles.py',
+        prog='gutenberg-bundles.py',
         usage='python3 %(prog)s [options]',
-        description='Project Guttenberg books scrape script:',
+        description='Project Gutenberg books scrape script:',
         epilog="Script will create output folder named as datestamp, and also maintain last processed bundle index and Excel spreadsheet"
     )
     parser.add_argument('-w', '--workers', type=int, default=4, help='Number of concurrent workers')
