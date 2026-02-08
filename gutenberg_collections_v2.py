@@ -1,7 +1,6 @@
-"""
-gutenberg_bundles.py.
+"""gutenberg_collections_v2.py.
 
-usage: python3 gutenberg_bundles.py [options]
+usage: python3 gutenberg_collections_v2.py [options]
 
 Project Gutenberg books scrape script:
 
@@ -346,7 +345,7 @@ class PDF(fpdf.FPDF):
 def write_book_pdf(pdf, title, author, language, text, notes, contents, preface):
     ## Title
     pdf.add_page()
-    pdf.set_font("dejavu-sans", size=24)
+    pdf.set_font("dejavu-sans", size=22)
     title_text = f"{title}\n\n{author}"
     lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=title_text, dry_run=True, output="LINES"))
     if lines_num >= 3:
@@ -377,18 +376,18 @@ def write_book_pdf(pdf, title, author, language, text, notes, contents, preface)
     return pdf.page_no()
 
 
-def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, language_2, title_1, title_2, author_1, author_2, notes_1, notes_2, contents_1, contents_2, preface_1, preface_2, text_1, text_2):
+def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, language_2, Title_1, Title_2, author, notes_1, notes_2, contents_1, contents_2, preface_1, preface_2, text_1, text_2):
     """
-    -Title page (bundle title centered) with both authors below → format: Author 1 & Author 2.
+    -Title page (bundle title centered) with two titles below → format: Title 1 & Title 2.
     -Blank page.
     -“Featured books” page (centered header). Then centered in the middle of the page two lines:
     -<Title 1>; <Author 1> — "Page " + page number where book 1 starts
     -<Title 2>; <Author 2> — "Page" + page number where the book 2 starts
     - Blank page
-    - Title page for book 1 (same format as the bundle but with title 1 and author 1)
+    - Title page for book 1 (same format as the bundle but with title 1 and author)
     - Book 1
     - Blank page
-    - Title page for book 2 (same format as the bundle but with title 2 and author 2)
+    - Title page for book 2 (same format as the bundle but with title 2 and author)
     - Book 2
     """
     interior_pdf_fname = f"{folder}/interior/{bundle_id}_paperback_interior.pdf"
@@ -398,14 +397,28 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
 
     # Title page
     pdf.add_page()
+    
+    #Original
+    #pdf.set_font("dejavu-sans", size=24)
+    
+    
+    #New
     pdf.set_font("dejavu-sans", size=24)
-    bundle_title_text = f"{bundle_title}\n\nBy\n\n{author_1} & {author_2}"
-    lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=bundle_title_text, dry_run=True, output="LINES"))
-    if lines_num >= 3:
-        padding_top = (228.6 - 24 * (lines_num - 1)) / 2
-    else:
-        padding_top = (228.6 - 24 * lines_num) / 2
-    pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=bundle_title_text)
+    pdf.multi_cell(w=0, align='C', padding=(40, 8), text=bundle_title)
+    pdf.ln(10)
+    pdf.set_font("dejavu-sans", size=18)
+    pdf.multi_cell(w=0, align='C', padding=(0, 6), text=f"{Title_1}\n\n&\n\n{Title_2}")
+
+    #----
+    #lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=bundle_title, dry_run=True, output="LINES"))
+
+    #if lines_num >= 3:
+    #    padding_top = (228.6 - 24 * (lines_num - 1)) / 2
+    #else:
+    #    padding_top = (228.6 - 24 * lines_num) / 2
+    
+    #bundle_title_text = f"\n\n{bundle_title}\n\n\n\n{Title_1}\n\n&\n\n {Title_2}"
+    #pdf.multi_cell(w=0, align='C', padding=(padding_top, 8, 0), text=bundle_title)
 
     # Blank page
     pdf.add_page()
@@ -416,7 +429,7 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
     with TemporaryFile() as book_1_tmp:
         book_1_tmp_pdf = PDF(format=(152.4, 228.6))
         book_1_tmp_pdf.add_font("dejavu-sans", style="", fname="assets/DejaVuSans.ttf")
-        featured_text = f"Featured books:\n\n\n\n{title_1}; {author_1} — Page 4\n\n{title_2}; {author_2} — Page {write_book_pdf(book_1_tmp_pdf, title_1, author_1, language_1, text_1, notes_1, contents_1, preface_1) + 6}"
+        featured_text = f"Featured books:\n\n\n\n{Title_1}; {author} — Page 4\n\n{Title_2}; {author} — Page {write_book_pdf(book_1_tmp_pdf, Title_1, author, language_1, text_1, notes_1, contents_1, preface_1) + 6}"
         book_1_tmp_pdf.output(book_1_tmp)
     lines_num = len(pdf.multi_cell(w=0, align='C', padding=(0, 8), text=featured_text, dry_run=True, output="LINES"))
     if lines_num >= 3:
@@ -429,13 +442,13 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
     pdf.add_page()
 
     # Book # 1
-    write_book_pdf(pdf, title_1, author_1, language_1, text_1, notes_1, contents_1, preface_1)
+    write_book_pdf(pdf, Title_1, author, language_1, text_1, notes_1, contents_1, preface_1)
 
     # Blank page
     pdf.add_page()
 
     # Book # 2
-    write_book_pdf(pdf, title_2, author_2, language_2, text_2, notes_2, contents_2, preface_2)
+    write_book_pdf(pdf, Title_2, author, language_2, text_2, notes_2, contents_2, preface_2)
 
     #
     pdf.output(interior_pdf_fname)
@@ -529,7 +542,7 @@ def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, pag
     weasyprint.HTML(string=cover_html).write_pdf(cover_pdf_fname)
 
 
-def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, title_1, title_2, bundle_title, author_1, author_2, description):
+def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, Title_1, Title_2, bundle_title, author, description):
     book_1, book_2 = fetch_gutenberg_book(index_1), fetch_gutenberg_book(index_2)
     if not book_1 or not book_2:
         raise Exception(f"Failed to fetch one or both books for bundle {bundle_id} (books {index_1}, {index_2})")
@@ -541,10 +554,9 @@ def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, title_1, title_2, 
         bundle_title,
         book_1_data['Language'],
         book_2_data['Language'],
-        title_1,
-        title_2,
-        author_1,
-        author_2,
+        Title_1,
+        Title_2,
+        author,
         book_1_data['Publisher Notes'],
         book_2_data['Publisher Notes'],
         book_1_data['Contents'],
@@ -554,7 +566,7 @@ def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, title_1, title_2, 
         book_1_data['Text'],
         book_2_data['Text']
     )
-    generate_bundle_cover_pdf(folder, bundle_id, bundle_title, f"{author_1} & {author_2}", description, interior_pages)
+    generate_bundle_cover_pdf(folder, bundle_id, bundle_title, f"{Title_1}\n&\n{Title_2}", description, interior_pages)
     return interior_pages
 
 def process_bundle(folder, row):
@@ -569,8 +581,9 @@ def process_bundle(folder, row):
             row["Title_1"],
             row["Title_2"],
             row["Title"],
-            row["Author_1"],
-            row["Author_2"],
+            row["Author"],
+            #row["Author_1"],
+            #row["Author_2"],
             row["Description"]
         )
         logger.info(f"Successfully generated bundle for ID: {row['ID']}")
@@ -666,7 +679,7 @@ def main(folder, num_workers):
 def parse_args():
     # parse command line arguments
     parser = argparse.ArgumentParser(
-        prog='gutenberg-bundles.py',
+        prog='gutenberg_bundles.py',
         usage='python3 %(prog)s [options]',
         description='Project Gutenberg books scrape script:',
         epilog="Script will create output folder named as datestamp, and also maintain last processed bundle index and Excel spreadsheet"
