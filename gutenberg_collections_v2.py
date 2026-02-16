@@ -456,7 +456,7 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
     return pages
 
 
-def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, pages):
+def generate_bundle_cover_pdf(folder, bundle_id, collection_title, author, title_1, title_2, description, pages):
     cover_pdf_fname, dalle_cover_img_png, cover_template_path, logo_path = (
         os.path.join(os.path.dirname(__file__), f"{folder}/cover/{bundle_id}_paperback_cover.pdf"),
         os.path.join(os.path.dirname(__file__), f"{folder}/images/{bundle_id}_paperback_cover.png"),
@@ -465,9 +465,9 @@ def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, pag
     )
 
     try:
-        prompt = f"""Generate an image to be featured in a book cover. 
-        Exclude any depictions of books, book covers or written text on the output image. 
-        Meeting the criteria mentioned before, the image needs to be based on the following description: {description}
+        prompt = f"""Generate an image to be featured in a book cover.
+        Exclude any depictions of books, book covers or written text on the output image.
+        Being very strict to meet the exclusions mentioned, the image needs to reflect and represent the '{title_1}' and '{title_2}'
         """
         img_url = client.images.generate(model='dall-e-3', prompt=prompt, n=1, quality="standard").data[0].url
         response = requests.get(img_url)
@@ -516,9 +516,9 @@ def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, pag
         back_cover_width=trim_width + bleed,
 
         # Content
-        book_title=title,
+        book_title=collection_title,
         title_font_size=24,
-        book_author=author,
+        book_author=f"{title_1}<br/>&<br/>{title_2}",
         author_font_size=16,
         book_title_separator="* * *",
         separator_font_size=16,
@@ -567,7 +567,7 @@ def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, Title_1, Title_2, 
         book_1_data['Text'],
         book_2_data['Text']
     )
-    generate_bundle_cover_pdf(folder, bundle_id, bundle_title, f"{Title_1}<br/>&<br/>{Title_2}", description, interior_pages)
+    generate_bundle_cover_pdf(folder, bundle_id, bundle_title, author, Title_1, Title_2, description, interior_pages)
     return interior_pages
 
 def process_bundle(folder, row):
