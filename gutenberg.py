@@ -255,7 +255,7 @@ def format_contents_with_openai(book_contents):
     return book_contents  # Return raw contents if API call fails
 
 def generate_book_pdfs(folder, _id, title, author, description, notes, contents, preface, text, include_publisher_notes=True, interior_only=False, cover_only=False, word_only=False):
-    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp, logo_path = (
+    interior_pdf_fname, cover_pdf_fname, front_cover_pdf_fname, front_cover_webp_fname, front_cover_square_fname, front_cover_image_tmp_fname, dalle_cover_img_png, dalle_cover_img_webp, cover_template_path, logo_path = (
         f"{folder}/pdf/{_id}_paperback_interior.pdf",
         f"{folder}/cover/{_id}_paperback_cover.pdf",
         f"{folder}/front_cover//{_id}.pdf",
@@ -264,6 +264,7 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         f"{folder}/front_cover/{_id}.png",
         f"{folder}/imgs/{_id}.png",
         f"{folder}/imgs/{_id}.webp",
+        os.path.join(os.path.dirname(__file__), f"assets/cover.html"),
         os.path.join(os.path.dirname(__file__), f"assets/logo.png")
     )
     pdf = PDF(format=(152.4, 228.6))
@@ -398,7 +399,7 @@ def generate_book_pdfs(folder, _id, title, author, description, notes, contents,
         # Left Logo (Back Cover)
         left_logo_x = bleed + (trim_width - logo_width) / 2
 
-        with open('assets/cover.html') as template_file:
+        with open(cover_template_path) as template_file:
             template = jinja2.Template(template_file.read())
 
         cover_html = template.render(

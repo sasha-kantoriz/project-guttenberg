@@ -457,9 +457,10 @@ def generate_bundle_interior_pdf(folder, bundle_id, bundle_title, language_1, la
 
 
 def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, pages):
-    cover_pdf_fname, dalle_cover_img_png, logo_path = (
+    cover_pdf_fname, dalle_cover_img_png, cover_template_path, logo_path = (
         os.path.join(os.path.dirname(__file__), f"{folder}/cover/{bundle_id}_paperback_cover.pdf"),
         os.path.join(os.path.dirname(__file__), f"{folder}/images/{bundle_id}_paperback_cover.png"),
+        os.path.join(os.path.dirname(__file__), f"assets/cover.html"),
         os.path.join(os.path.dirname(__file__), f"assets/logo.png")
     )
 
@@ -499,7 +500,7 @@ def generate_bundle_cover_pdf(folder, bundle_id, title, author, description, pag
     # Left Logo (Back Cover)
     left_logo_x = bleed + (trim_width - logo_width) / 2
 
-    with open('assets/cover.html') as template_file:
+    with open(cover_template_path) as template_file:
         template = jinja2.Template(template_file.read())
 
     cover_html = template.render(
@@ -566,7 +567,7 @@ def generate_bundle_pdfs(folder, bundle_id, index_1, index_2, Title_1, Title_2, 
         book_1_data['Text'],
         book_2_data['Text']
     )
-    generate_bundle_cover_pdf(folder, bundle_id, bundle_title, f"{Title_1}\n&\n{Title_2}", description, interior_pages)
+    generate_bundle_cover_pdf(folder, bundle_id, bundle_title, f"{Title_1}<br/>&<br/>{Title_2}", description, interior_pages)
     return interior_pages
 
 def process_bundle(folder, row):
